@@ -1,6 +1,6 @@
 # Part 2 后端常用技术栈 — RabbitMQ
 
-> 学习状态（2026-10-08）：已进行基础概念与 Python 示例代码的问答学习；**尚未在 Ubuntu VM 中安装/运行 RabbitMQ，也未运行 Pika 生产者或消费者。** 本文是阶段笔记，不代表本节实践已验收。
+> 学习状态（截至 2026-10-09）：已在 Ubuntu Docker 中运行 RabbitMQ，并通过 Pika 做最小发送/接收练习。发送入队有独立核验，消费者运行及 ACK 输出由用户反馈成功；**代码逐行理解与底层实现尚未掌握，需下次继续。**
 
 ## 1. RabbitMQ 是什么？为什么需要 MQ？
 
@@ -49,7 +49,7 @@ ch.basic_ack(delivery_tag=method.delivery_tag)
 
 一种处理思路：为每个业务任务设唯一 `task_id`，Worker 检查是否处理过；已完成的不重复写 MySQL，而是直接确认本次投递。实际代码不能只靠“先查询再插入”来避免并发重复，还应考虑数据库唯一约束和事务等手段。
 
-## 5. Python 如何发送、接收消息？（代码阅读，未实测）
+## 5. Python 如何发送、接收消息？（示例与最小实践）
 
 Python 可以使用 `pika` 与 RabbitMQ 通信。先理解了以下接口和语法：
 
@@ -90,21 +90,26 @@ channel.basic_consume(
 channel.start_consuming()
 ```
 
-`callback` 是函数本身（不加括号），由 Pika 收到消息后调用。`basic_consume()` 是注册消费规则；`start_consuming()` 才开始持续处理消息。以上代码只为说明结构，**目前没有安装连接和运行测试记录**；生产环境还需考虑连接异常、消息/队列持久化、发布确认、重试和权限认证。
+`callback` 是函数本身（不加括号），由 Pika 收到消息后调用。`basic_consume()` 是注册消费规则；`start_consuming()` 才开始持续处理消息。以上代码先用于讲解结构；2026-10-09 已在 Project/src/send.py 和 Project/src/receive.py 做最小实测。生产环境仍需考虑连接异常、消息/队列持久化、发布确认、重试和权限认证。
 
-## 6. 本次问答掌握与下次断点
+## 6. 概念问答与能力边界
 
 2026-10-08 的问答中，已能解释：为什么入队后只能说“提交成功”；一个 Worker 如何排队处理任务；增加 Worker 与限流/背压的取舍；下游通知服务宕机时其他服务为何可以继续；ACK 为什么不能早于数据库写入；消息重复后为什么要做幂等处理。
 
 另外补学 Python 的 `with`、函数作为参数与回调、`bytes`/`str`、`decode()`。已读懂 Producer/Consumer 示例的主要执行顺序，但**还不能把阅读示例等同于独立编写和运行成功**。
 
-**下次继续（先理解再操作）：**
+## 7. 2026-10-09 最小实测
 
-1. 在 Ubuntu VM 的 `~/jotang-recruit/JotangNote` 检查 Docker：`docker --version`、`docker ps -a`，先弄懂输出与命令参数。
-2. 学习启动 RabbitMQ 容器及其端口、持久化等最小必要配置，再由自己动手启动。
-3. 在项目虚拟环境中安装 `pika`，亲手编写并运行最小 Producer/Consumer，验证消息、手动 ACK 和运行结果。
-4. 实测结束后补上真实命令、截图、结果与问题，修订本文；再进入后端启蒙篇的下一主题。
+- **环境：** Ubuntu 22.04 VM，Docker 29.1.3，RabbitMQ Docker 镜像 rabbitmq:4-management，绑定到 Ubuntu 本机 127.0.0.1:5672 (AMQP) 与 127.0.0.1:15672 (Web 管理端口)，两端口监听且管理页 HTTP 200 经 SSH 核验。
+- **下载故障：** Docker Hub 一度 DNS 解析错误；网络检查发现 NAT 上游 DNS 192.168.43.2 与 Fake-IP 地址。网络恢复后重新拉取镜像成功。
+- **Python 客户端：** 虚拟环境已装 pika 1.4.4；生产者 Project/src/send.py 和消费者 Project/src/receive.py 均通过语法检查，认证密码通过环境变量 RABBITMQ_PASSWORD 读取，不在源码中保存。
+- **兼容性：** 当下 RabbitMQ 镜像中 queue_declare(queue="hello") 因 transient_nonexcl_queues 特性触发 541；改为 queue_declare(queue="hello", durable=True) 后继续。队列持久化不等于消息持久化。
+- **发送证据：** 生产者运行后，助手通过 AMQP 被动查询发现 hello 队列存在，messages_ready=1、consumers=0，证明已有消息入队。
+- **消费证据与边界：** 用户确认消费者程序运行完成，代码中使用 auto_ack=False，回调接收、打印消息后执行 basic_ack。助手核对源码但未取得用户当时的终端输出、也未独立复查消费后的队列计数；因此仅按用户反馈记录本轮消费结果。
+- **暂未验证：** ACK 前崩溃后的重投、幂等性、消息发布确认、消息持久化、完整截图和异常重试。
+
+**下次继续：** 先结合已存在的两个脚本补 Python 基础语法（with、回调、字节/字符串、环境变量）与 Pika API、RabbitMQ 底层消息投递机制，不重复安装。之后继续启蒙篇 AI Agent、HTTP / API / JSON / HTTPS；补截图与正式提交收尾视实际要求处理。
 
 ## AI 使用说明
 
-本文由 ChatGPT 基于本人在 2026-10-08 的逐题问答和代码阅读整理；理解与判断由本人逐步作答并经纠正。**没有把未执行的代码、未安装的服务或未获得的运行结果写成已验证事实。**
+本文由 ChatGPT 根据 2026-10-08 问答、2026-10-09 用户实际练习和 SSH 核验整理，区分用户反馈与独立核验；不把尚未验证的底层可靠性或代码掌握程度写成已完成。
