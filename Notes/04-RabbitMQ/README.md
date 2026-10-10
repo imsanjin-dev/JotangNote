@@ -1,73 +1,73 @@
 # Part 2 后端常用技术栈 — RabbitMQ
 
-> 学习状态（截至 2026-10-09）：已在 Ubuntu Docker 中运行 RabbitMQ，并通过 Pika 做最小发送/接收练习。发送入队有独立核验，消费者运行及 ACK 输出由用户反馈成功；**代码逐行理解与底层实现尚未掌握，需下次继续。**
+## 1. RabbitMQ 是什么？为什么需要消息队列？
 
-## 1. RabbitMQ 是什么？为什么需要 MQ？
+RabbitMQ 是一种消息代理（Message Broker），用于接收、路由和投递程序之间的消息。消息队列（Message Queue，MQ）可以让发送任务的程序和执行任务的程序不必同步等待。
 
-MQ（Message Queue，消息队列）用于在程序之间传递消息。RabbitMQ 是消息代理（Message Broker）：生产者把任务信息作为消息发布，消费者可以稍后取得消息并处理。
+例如在 JotangNote 中，用户发起“生成笔记摘要”后，FastAPI 可以先把任务交给 RabbitMQ，由后台 Worker 调用 AI 处理。接口可以先返回“任务已接受”，用户再通过任务状态查看最终结果。**消息成功入队不等于摘要已经生成成功。**
 
-在 JotangNote 中，用户提交“生成笔记摘要”后，FastAPI 不一定需要等待 AI 把摘要算完。可以先把任务放入队列，由后台 Worker 处理，接口先返回“已接受/等待处理”，而不是直接返回“摘要生成成功”。**消息成功入队 ≠ 业务已经执行成功**。异步接口可以使用 HTTP 202 Accepted，并让用户通过任务状态确认最终结果。
+使用 MQ 的主要原因：
 
-引入 MQ 的常见原因：
+- **异步处理**：耗时工作交给后台执行，缩短接口等待时间；
+- **削峰填谷**：高峰期让任务排队，避免下游服务瞬间承受过多请求；
+- **服务解耦**：发送方发布消息后，不需要直接调用所有处理方。
 
-1. **异步处理**：耗时任务交给后台执行，缩短 HTTP 请求等待时间。
-2. **削峰填谷**：高峰时先让任务排队，低峰时继续消费，避免所有任务瞬间压到下游。若长期生产速度大于消费速度，队列仍会积压；可以增加 Worker，也可用限流、背压控制流量。
-3. **服务解耦**：笔记服务发布“笔记已创建”事件，通知服务、搜索服务分别消费自己需要的消息，不必让笔记服务直接调用所有下游服务。
+如果消息产生速度长期高于消费速度，队列仍然会积压，需要增加 Worker、限制请求量或采取其他措施。
 
-## 2. 一条消息经过哪些角色？
+## 2. 消息是怎样传递的？
 
-基本流程：**Producer（生产者） → Exchange（交换机） → Queue（队列） → Consumer（消费者/Worker）**。
+基本流程：
 
-- Producer：例如 FastAPI，把待处理任务编码成消息并发布。
-- Exchange：根据路由规则把消息送往合适的队列；默认交换机写为 `exchange=""`。
-- Queue：保存等待消费的消息。没有 Worker 时，满足队列和消息的可靠性条件才能保证消息在故障后仍保留。
-- Consumer：例如后台 Python Worker，接收消息并执行数据库操作、生成摘要等任务。
-
-简单使用默认交换机时，`routing_key="tasks"` 表示路由到名为 `tasks` 的队列；它必须存在，否则在默认发布设置下，无法路由的消息可能被丢弃。实际系统还要考虑消息是否成功到达 Broker 的确认机制。
-
-**顺序注意**：队列可以按入队顺序安排消息，但多个 Worker 并行、重试等情况下，消息不保证按原顺序处理完成。涉及同一篇笔记的先后修改，后续需要专门考虑顺序性。
-
-## 3. ACK：收到消息不等于执行成功
-
-消费者使用 `auto_ack=False` 时，处理成功后再执行：
-
-```python
-ch.basic_ack(delivery_tag=method.delivery_tag)
+```text
+Producer（生产者）
+       ↓
+Exchange（交换机）
+       ↓
+Queue（队列）
+       ↓
+Consumer（消费者 / Worker）
 ```
 
-- `ch` 是本次消费使用的 Channel；`method.delivery_tag` 是该 Channel 内本次消息投递的编号，并不是业务任务 ID。
-- ACK 表示**这次消息投递已处理完毕**。即使发现任务之前已经做过，这次投递仍需要确认。
-- 如果 Worker 在 ACK 前崩溃，RabbitMQ 检测到连接/通道关闭后，可以重新投递未确认的消息。
-- 如果数据库操作还未成功就提前 ACK，后续失败时 RabbitMQ 已认为消息处理完，可能导致业务任务丢失。
-- 如果 Worker 没崩溃但业务失败，也不能只想着“不 ACK 就一定立即重试”；还需要设计异常处理、`basic_nack()`、重试或死信等策略。
+- **Producer**：发布消息，例如 FastAPI 提交摘要任务；
+- **Exchange**：根据路由规则将消息送到相应队列；
+- **Queue**：保存等待投递的消息；
+- **Consumer**：订阅队列，收到消息后执行业务。
 
-## 4. 重复消费与幂等性
+默认交换机的写法是 `exchange=""`。使用默认交换机时，`routing_key="hello"` 表示将消息路由到名为 `hello` 的队列（前提是队列存在）。
 
-例如 Worker 已在 MySQL 中新增一篇笔记，却在 ACK 前崩溃。RabbitMQ 重投这条消息时，如果直接再执行插入，可能出现两篇相同的笔记。
+同一队列可以有多个 Worker 分担消息处理。队列通常按顺序安排投递，但多个 Worker 并发、失败重试时，任务完成的顺序不一定与入队顺序一致。
 
-**幂等性**：同一业务操作执行多次和执行一次，最终效果保持一致。
+## 3. Connection 与 Channel
 
-一种处理思路：为每个业务任务设唯一 `task_id`，Worker 检查是否处理过；已完成的不重复写 MySQL，而是直接确认本次投递。实际代码不能只靠“先查询再插入”来避免并发重复，还应考虑数据库唯一约束和事务等手段。
+Python 可以通过 Pika 使用 AMQP 0-9-1 协议与 RabbitMQ 通信。Pika 将发布、消费等操作编码为协议帧，再通过 TCP 连接发送到 RabbitMQ；RabbitMQ 负责解析、路由和投递消息。
 
-## 5. Python 如何发送、接收消息？（示例与最小实践）
+- **Connection**：与 RabbitMQ 建立的网络连接；
+- **Channel**：连接上的逻辑通信通道，多个 Channel 可以复用一条 TCP 连接。
 
-Python 可以使用 `pika` 与 RabbitMQ 通信。先理解了以下接口和语法：
+`pika.BlockingConnection(parameters)` 建立连接，`connection.channel()` 创建 Channel。`with ... as connection` 用于在离开代码块时关闭连接。
 
-| 接口 / 语法 | 作用 |
+使用 Pika 的方法并不是直接修改 RabbitMQ 内部的数据结构，而是向 Broker 发送协议操作。
+
+## 4. 如何使用 Python 发送和接收消息？
+
+Pika 中常见的 API：
+
+| API | 作用 |
 | --- | --- |
-| `pika.BlockingConnection(parameters)` | 建立 RabbitMQ 连接 |
-| `with ... as connection` | 用上下文管理器在离开代码块时清理连接 |
-| `connection.channel()` | 创建通道 |
-| `channel.queue_declare(queue="hello")` | 声明队列，不存在时创建 |
-| `channel.basic_publish(...)` | 将消息发布到交换机，由它路由至队列 |
-| `channel.basic_consume(...)` | 注册队列和收到消息时调用的回调函数 |
-| `channel.start_consuming()` | 进入持续处理消息的循环 |
-| `body.decode("utf-8")` | 将收到的 bytes 转成字符串 |
+| `PlainCredentials(...)` | 提供连接用户名和密码 |
+| `ConnectionParameters(...)` | 配置主机、端口和认证信息 |
+| `BlockingConnection(...)` | 建立连接 |
+| `connection.channel()` | 创建 Channel |
+| `queue_declare(...)` | 声明队列，不存在时创建 |
+| `basic_publish(...)` | 发布消息 |
+| `basic_consume(...)` | 注册消费者回调 |
+| `start_consuming()` | 持续接收并处理消息 |
+| `basic_ack(...)` | 确认某次消息投递完成 |
 
-### 发送方的核心片段
+### 发送消息
 
 ```python
-channel.queue_declare(queue="hello")
+channel.queue_declare(queue="hello", durable=True)
 channel.basic_publish(
     exchange="",
     routing_key="hello",
@@ -75,7 +75,9 @@ channel.basic_publish(
 )
 ```
 
-### 接收方的核心片段
+`queue_declare` 确保队列存在，`basic_publish` 把消息发布到交换机，再由交换机路由。`durable=True` 表示声明持久化队列，**不代表消息本身就一定持久化**。
+
+### 接收消息
 
 ```python
 def callback(ch, method, properties, body):
@@ -90,26 +92,45 @@ channel.basic_consume(
 channel.start_consuming()
 ```
 
-`callback` 是函数本身（不加括号），由 Pika 收到消息后调用。`basic_consume()` 是注册消费规则；`start_consuming()` 才开始持续处理消息。以上代码先用于讲解结构；2026-10-09 已在 Project/src/send.py 和 Project/src/receive.py 做最小实测。生产环境仍需考虑连接异常、消息/队列持久化、发布确认、重试和权限认证。
+`basic_consume()` 负责注册回调函数，`start_consuming()` 才会进入消费循环。`callback` 作为函数对象传入，不是在注册时立即执行。
 
-## 6. 概念问答与能力边界
+收到的 `body` 是 `bytes`，使用 `decode("utf-8")` 转为字符串。`auto_ack=False` 表示不自动确认，而由代码在处理完成后执行 ACK。
 
-2026-10-08 的问答中，已能解释：为什么入队后只能说“提交成功”；一个 Worker 如何排队处理任务；增加 Worker 与限流/背压的取舍；下游通知服务宕机时其他服务为何可以继续；ACK 为什么不能早于数据库写入；消息重复后为什么要做幂等处理。
+实际练习代码见 `Project/src/send.py` 和 `Project/src/receive.py`。连接密码通过环境变量 `RABBITMQ_PASSWORD` 读取，避免直接写在源码中。
 
-另外补学 Python 的 `with`、函数作为参数与回调、`bytes`/`str`、`decode()`。已读懂 Producer/Consumer 示例的主要执行顺序，但**还不能把阅读示例等同于独立编写和运行成功**。
+## 5. ACK、消息可靠性和幂等性
 
-## 7. 2026-10-09 最小实测
+**消费者收到消息，不代表业务执行成功。** 手动确认的基本原则是先完成业务处理，再发送 ACK：
 
-- **环境：** Ubuntu 22.04 VM，Docker 29.1.3，RabbitMQ Docker 镜像 rabbitmq:4-management，绑定到 Ubuntu 本机 127.0.0.1:5672 (AMQP) 与 127.0.0.1:15672 (Web 管理端口)，两端口监听且管理页 HTTP 200 经 SSH 核验。
-- **下载故障：** Docker Hub 一度 DNS 解析错误；网络检查发现 NAT 上游 DNS 192.168.43.2 与 Fake-IP 地址。网络恢复后重新拉取镜像成功。
-- **Python 客户端：** 虚拟环境已装 pika 1.4.4；生产者 Project/src/send.py 和消费者 Project/src/receive.py 均通过语法检查，认证密码通过环境变量 RABBITMQ_PASSWORD 读取，不在源码中保存。
-- **兼容性：** 当下 RabbitMQ 镜像中 queue_declare(queue="hello") 因 transient_nonexcl_queues 特性触发 541；改为 queue_declare(queue="hello", durable=True) 后继续。队列持久化不等于消息持久化。
-- **发送证据：** 生产者运行后，助手通过 AMQP 被动查询发现 hello 队列存在，messages_ready=1、consumers=0，证明已有消息入队。
-- **消费证据与边界：** 用户确认消费者程序运行完成，代码中使用 auto_ack=False，回调接收、打印消息后执行 basic_ack。助手核对源码但未取得用户当时的终端输出、也未独立复查消费后的队列计数；因此仅按用户反馈记录本轮消费结果。
-- **暂未验证：** ACK 前崩溃后的重投、幂等性、消息发布确认、消息持久化、完整截图和异常重试。
+```python
+ch.basic_ack(delivery_tag=method.delivery_tag)
+```
 
-**下次继续：** 先结合已存在的两个脚本补 Python 基础语法（with、回调、字节/字符串、环境变量）与 Pika API、RabbitMQ 底层消息投递机制，不重复安装。之后继续启蒙篇 AI Agent、HTTP / API / JSON / HTTPS；补截图与正式提交收尾视实际要求处理。
+这里的 `delivery_tag` 标记的是当前 Channel 上的一次消息投递，并不是笔记 ID 或业务任务 ID。
+
+如果 Worker 在写入数据库之前就发送 ACK，随后程序出错，消息可能已经被 RabbitMQ 视为处理完成。反过来，如果数据库写入成功但 Worker 在 ACK 前崩溃，连接关闭后未确认的消息可能被重新投递。
+
+这就引出了**幂等性**：同一业务操作执行多次，最终结果应与执行一次一致。
+
+例如创建笔记任务被重复投递时，不能每次都新增一篇相同的笔记。可以给任务设置唯一 `task_id`，并结合数据库唯一约束、事务等机制避免重复写入；单纯“先查询再插入”仍可能存在并发竞争问题。
+
+实际系统还需要区分：
+
+- **手动 ACK**：确认消费者成功处理了这次投递；
+- **持久化**：队列持久化和消息持久化是不同设置；
+- **发布确认**：发送方需要确认 Broker 是否接收消息；
+- **失败处理**：业务出错时设计拒绝、重试或死信队列等策略。
+
+RabbitMQ 并不自动保证业务只执行一次。可靠处理还依赖应用自身的设计。
+
+## 6. 本阶段理解与实践情况
+
+已理解 RabbitMQ 异步处理、削峰和解耦的作用，以及生产者、交换机、队列、消费者、ACK、重复投递和幂等性的基本关系。
+
+已在 Ubuntu 虚拟机中使用 Docker 启动 RabbitMQ，并通过 Python Pika 编写 `send.py`、`receive.py` 进行最小收发练习。发送入队经过独立检查；消费运行由实际操作反馈确认，当时没有额外核验消费后的队列计数和完整 ACK 日志。
+
+目前能理解示例代码的用途和整体流程，但脱离示例独立组织代码、AMQP 的底层细节、故障重投和持久化等可靠性场景仍有待通过实践掌握。后续在 JotangNote 入门篇的真实异步任务中继续学习，不单独重复收发示例。
 
 ## AI 使用说明
 
-本文由 ChatGPT 根据 2026-10-08 问答、2026-10-09 用户实际练习和 SSH 核验整理，区分用户反馈与独立核验；不把尚未验证的底层可靠性或代码掌握程度写成已完成。
+使用 ChatGPT 辅助解释 RabbitMQ 的原理、Pika API、ACK 与幂等性，并整理笔记；已实际练习的收发操作与尚未验证的可靠性场景在上文分开说明。
