@@ -77,7 +77,39 @@ Redis 主要配合以下机制：
 - 旧数据：相对 MySQL 的最新状态已经落后，但 Redis 的 TTL 可能还没结束；
 - 过期数据：已经到达 TTL，正常读取不会再获取该值。
 
-## 6. 本阶段掌握情况
+## 6. 如何使用 Python 操作 Redis？
+
+Python 可以使用 `redis-py` 客户端库连接 Redis，并调用与 Redis 命令对应的方法。示例：
+
+```python
+import redis
+
+client = redis.Redis(
+    host="127.0.0.1",
+    port=6379,
+    db=0,
+    decode_responses=True
+)
+
+# String：写入并设置 60 秒过期时间，再读取
+client.set("note:5:string", "Redis学习笔记", ex=60)
+value = client.get("note:5:string")
+
+# Hash：保存和读取笔记字段
+client.hset("note:6:hash", mapping={
+    "title": "Redis基础",
+    "author": "golds"
+})
+title = client.hget("note:6:hash", "title")
+
+client.close()
+```
+
+这里的 `client` 是 Redis 客户端，`set/get` 操作 String，`hset/hget` 操作 Hash；`ex=60` 对应设置 60 秒 TTL。`decode_responses=True` 让文本结果按字符串解码，否则通常会得到 `bytes`。实际项目中还需配置认证、连接超时和异常处理。
+
+**上述代码仅作为 Python API 的学习示例，尚未连接 Redis 服务实测。** 实际安装和运行留到入门篇。
+
+## 7. 本阶段掌握情况
 
 已能解释 Redis 缓存为何能减少重复的 MySQL 查询，理解 String 与 Hash 的区别，以及 TTL、惰性删除、定期主动删除、逻辑过期和物理删除。能解释缓存更新失败为何导致旧数据，以及缓存到期后按需回源 MySQL 的流程。
 
@@ -85,4 +117,4 @@ Redis 主要配合以下机制：
 
 ## AI 使用说明
 
-使用 ChatGPT 进行问答讲解和笔记整理；自己回答了 SET、HGET、缓存作用、Hash 选择、过期删除与缓存一致性等理解问题。本文命令示例未实际执行。
+使用 ChatGPT 进行问答讲解和笔记整理；自己回答了 SET、HGET、缓存作用、Hash 选择、过期删除与缓存一致性等理解问题。本文 Redis 命令与 Python 客户端示例均未实际执行。
