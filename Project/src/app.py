@@ -7,13 +7,14 @@ import jwt
 import pymysql
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Response
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel, Field
 from pwdlib import PasswordHash
 from note_cache import cache_note, get_cached_note, invalidate_note_cache
-from ai_client import chat_once
+from ai_client import chat_with_history
+from chat_session import commit_turn, get_history, get_session
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 password_hasher = PasswordHash.recommended()
@@ -42,6 +43,7 @@ class NoteUpdate(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
+    conversation_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
 
 
 def get_connection():
@@ -103,6 +105,11 @@ def get_current_user(
     if current_user is None:
         raise auth_error
     return current_user
+
+
+@app.get("/", include_in_schema=False)
+def frontend():
+    return FileResponse(Path(__file__).resolve().parents[1] / "web" / "index.html")
 
 
 @app.get("/hello", response_class=PlainTextResponse)
@@ -357,7 +364,12 @@ def chat(
     request: ChatRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
 ):
-    """Advanced Part 1: authenticated one-shot chat (no history/tools yet)."""
+    """Part 2/3: one user's multi-turn session and transparent AI note lookup."""
     if not request.message.strip():
         raise HTTPException(status_code=422, detail="消息不能为空")
-    return {"reply": chat_once(request.message)}
+    conversation_id, session = get_session(current_user["id"], request.conversation_id)
+    # Serialize requests to the same conversation to keep message order stable.
+    with session.lock:
+        answer, turn = chat_with_history(request.message, get_history(session), get_note)
+        commit_turn(session, turn)
+    return {"conversation_id": conversation_id, "reply": answer}

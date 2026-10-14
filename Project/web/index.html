@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JotangNote · 笔记与 AI 助手</title>
+  <style>
+    :root { color-scheme: light; --ink:#1e2834; --muted:#687584; --bg:#f4f5f1; --panel:#fff; --line:#dfe4e2; --blue:#2756dc; --dark:#162536; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; }
+    button,input,textarea { font:inherit; }
+    button { cursor:pointer; }
+    button:disabled { cursor:not-allowed; opacity:.55; }
+    .shell { display:grid; grid-template-columns:268px minmax(0,1fr); min-height:100vh; }
+    aside { background:var(--dark); color:#f6f9fc; padding:34px 24px; display:flex; flex-direction:column; gap:30px; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; font-size:23px; letter-spacing:-.7px; }
+    .brandmark { width:39px; height:39px; background:#d7f18e; color:#18252f; border-radius:12px; display:grid; place-items:center; font-size:22px; }
+    .aside-heading { color:#93a8bd; letter-spacing:2px; font-size:11px; font-weight:800; text-transform:uppercase; margin-bottom:10px; }
+    aside p { color:#afbdca; font-size:13px; margin:0; line-height:1.7; }
+    .side-footer { margin-top:auto; font-size:12px; color:#9db0c2; }
+    main { width:100%; max-width:1600px; padding:38px clamp(20px,4vw,62px) 45px; margin:0 auto; min-width:0; }
+    .topline { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:27px; }
+    h1 { margin:0; font-size:clamp(26px,3vw,38px); letter-spacing:-1.2px; line-height:1.2; }
+    .lead { margin:7px 0 0; color:var(--muted); font-size:14px; }
+    .pill { display:inline-flex; align-items:center; gap:9px; background:#e8eced; padding:9px 14px; border-radius:30px; font-size:13px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:#acb6be; }
+    .dot.online { background:#23a479; }
+    .layout { display:grid; grid-template-columns:minmax(330px,.92fr) minmax(380px,1.08fr); align-items:stretch; gap:22px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:18px; min-width:0; box-shadow:0 7px 25px #18273806; overflow:hidden; }
+    .panelhead { padding:24px 25px 20px; border-bottom:1px solid var(--line); }
+    .eyebrow { font-size:11px; font-weight:800; color:var(--blue); letter-spacing:1.7px; text-transform:uppercase; }
+    h2 { font-size:21px; margin:6px 0 6px; letter-spacing:-.5px; }
+    .sub { color:var(--muted); font-size:13px; margin:0; }
+    .panelbody { padding:23px 25px; }
+    .field { display:flex; flex-direction:column; gap:7px; margin-bottom:17px; }
+    .field label { font-weight:650; font-size:13px; }
+    input,textarea { width:100%; border:1px solid #d7dfe0; border-radius:10px; background:white; padding:11px 12px; color:var(--ink); outline:none; }
+    textarea { min-height:144px; resize:vertical; }
+    input:focus,textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px #2756dc16; }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; }
+    .btn { padding:10px 16px; border-radius:10px; background:white; border:1px solid #d7dfe0; font-weight:650; font-size:13px; }
+    .btn.primary { background:var(--blue); border-color:var(--blue); color:white; }
+    .btn.danger { color:#ba3440; border-color:#ead0d2; }
+    .btn:hover:not(:disabled) { filter:brightness(.96); }
+    .result { margin-top:18px; white-space:pre-wrap; overflow-wrap:anywhere; background:#f6f8fa; border:1px solid #e4e9ed; border-radius:11px; padding:14px; min-height:65px; font-size:13px; color:#566573; }
+    .chatwrap { min-height:590px; display:flex; flex-direction:column; }
+    .chatfeed { flex:1; min-height:285px; max-height:510px; overflow-y:auto; padding:22px 24px; display:flex; flex-direction:column; gap:14px; }
+    .bubble { padding:13px 15px; max-width:88%; border-radius:14px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; }
+    .bubble.assistant { align-self:flex-start; background:#eef1f4; border-bottom-left-radius:4px; }
+    .bubble.user { align-self:flex-end; background:#e3eafa; border-bottom-right-radius:4px; }
+    .bubble.notice { align-self:center; background:transparent; font-size:12px; color:var(--muted); text-align:center; }
+    .composer { padding:17px 23px 22px; border-top:1px solid var(--line); }
+    .composer textarea { min-height:85px; }
+    .composer-bottom { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:9px; }
+    .small { color:var(--muted); font-size:12px; }
+    .authcard { background:#f6f9ff; border:1px solid #dde6ff; padding:18px; border-radius:12px; margin-bottom:22px; }
+    .authrow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .authcard h3 { margin:0 0 12px; font-size:16px; }
+    .authcard p { font-size:12px; margin:10px 0 0; color:var(--muted); }
+    .account { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+    .hidden { display:none!important; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media(max-width:1050px) { .shell { grid-template-columns:1fr; } aside { padding:18px 25px; flex-direction:row; align-items:center; justify-content:space-between; } .aside-heading,aside p,.side-footer { display:none; } main { padding-top:27px; } }
+    @media(max-width:810px) { .layout { grid-template-columns:1fr; } .chatwrap { min-height:440px; } .chatfeed { min-height:250px; } }
+    @media(max-width:500px) { .panelhead,.panelbody { padding:19px; } .chatfeed,.composer { padding:16px; } .authrow { grid-template-columns:1fr; } aside { padding:15px; } }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside aria-label="网站介绍">
+    <div class="brand"><span class="brandmark" aria-hidden="true">✎</span> JotangNote</div>
+    <div><div class="aside-heading">Workspace / 01</div><h2>写下想法，<br>随时找回来。</h2><p>从日常笔记到 AI 辅助梳理，一切都在同一个工作台。</p></div>
+    <div class="side-footer">2026 · 焦糖工作室招新项目</div>
+  </aside>
+  <main>
+    <div class="topline">
+      <div><div class="eyebrow">PERSONAL KNOWLEDGE SPACE</div><h1>你的笔记工作台</h1><p class="lead">记录、检索、编辑，再交给 AI 帮你总结。</p></div>
+      <span class="pill"><span id="statusDot" class="dot"></span><span id="statusText">未登录</span></span>
+    </div>
+    <section class="authcard" id="authCard" aria-label="用户认证">
+      <h3>先登录，开始记录</h3>
+      <div class="authrow">
+        <div class="field"><label for="username">用户名</label><input id="username" autocomplete="username" maxlength="100" placeholder="用户名"></div>
+        <div class="field"><label for="password">密码</label><input id="password" type="password" autocomplete="current-password" placeholder="密码"></div>
+      </div>
+      <div class="actions"><button class="btn primary" id="loginBtn">登录</button><button class="btn" id="registerBtn">注册新用户</button></div>
+      <p id="authMessage" role="status">账户用于保护笔记的新增、修改和删除权限。</p>
+    </section>
+    <div class="account hidden" id="accountBar"><span id="welcome"></span><button class="btn" id="logoutBtn">退出登录</button></div>
+    <div class="layout">
+      <section class="panel" aria-labelledby="noteHeading">
+        <div class="panelhead"><div class="eyebrow">01 / NOTE STUDIO</div><h2 id="noteHeading">笔记管理</h2><p class="sub">支持按 ID 查询、创建、修改与删除。</p></div>
+        <div class="panelbody">
+          <div class="field"><label for="noteId">笔记 ID（查询 / 修改 / 删除）</label><input id="noteId" inputmode="numeric" type="number" min="1" placeholder="例如 12"></div>
+          <div class="field"><label for="noteTitle">标题</label><input id="noteTitle" maxlength="250" placeholder="为这篇笔记起个名字"></div>
+          <div class="field"><label for="noteContent">正文</label><textarea id="noteContent" placeholder="从一个想法开始记录…"></textarea></div>
+          <div class="actions">
+            <button class="btn" id="readBtn">查询</button>
+            <button class="btn primary" id="createBtn">新建笔
+            <button class="btn primary" id="createBtn">新建笔记</button>
+            <button class="btn" id="updateBtn">保存修改</button>
+            <button class="btn danger" id="deleteBtn">删除</button>
+          </div>
+          <div class="result" id="noteResult" role="status">查询结果和操作反馈将在这里显示。</div>
+        </div>
+      </section>
+      <section class="panel chatwrap" aria-labelledby="chatHeading">
+        <div class="panelhead"><div class="eyebrow">02 / AI COMPANION</div><h2 id="chatHeading">AI 笔记助手</h2><p class="sub">多轮交流 · 根据笔记 ID 自动读取全文 · 帮你整理思路</p></div>
+        <div id="chatFeed" class="chatfeed" aria-live="polite">
+          <div class="bubble notice">登录后开始新对话。试试“帮我总结 ID 为 1 的笔记”。</div>
+        </div>
+        <div class="composer">
+          <label class="sr-only" for="chatMessage">发送给 AI 的消息</label>
+          <textarea id="chatMessage" maxlength="4000" placeholder="向 AI 提问，或者让它总结一篇笔记…"></textarea>
+          <div class="composer-bottom"><span class="small">Enter 发送 · Shift+Enter 换行</span>
+            <div class="actions"><button class="btn" id="newChatBtn">新对话</button><button class="btn primary" id="sendBtn">发送 ↗</button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+<script>
+  'use strict';
+  const $ = id => document.getElementById(id);
+  let token = sessionStorage.getItem('jotang_token') || '';
+  let username = sessionStorage.getItem('jotang_username') || '';
+  let conversationId = null;
+  let pending = false;
+  const mutationButtons = ['createBtn', 'updateBtn', 'deleteBtn', 'sendBtn'];
+  function setAuth() {
+    $('authCard').classList.toggle('hidden', Boolean(token));
+    $('accountBar').classList.toggle('hidden', !token);
+    $('statusDot').classList.toggle('online', Boolean(token));
+    $('statusText').textContent = token ? '已登录 · ' + username : '未登录';
+    $('welcome').textContent = '当前账户：' + username;
+    for (const id of mutationButtons) $(id).disabled = !token || pending;
+  }
+  function errorText(data, fallback) {
+    return typeof data?.detail === 'string' ? data.detail : fallback;
+  }
+  async function request(url, method='GET', body, authenticated=false) {
+    const headers = {};
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (authenticated && token) headers.Authorization = 'Bearer ' + token;
+    const res = await fetch(url, {method, headers, body: body === undefined ? undefined : JSON.stringify(body)});
+    let data = {};
+    try { data = await res.json(); } catch (_) { /* response without JSON */ }
+    if (!res.ok) throw new Error(errorText(data, 'HTTP ' + res.status));
+    return data;
+  }
+  function message(text, role='notice') {
+    const node = document.createElement('div');
+    node.className = 'bubble ' + role;
+    node.textContent = text;
+    $('chatFeed').append(node);
+    $('chatFeed').scrollTop = $('chatFeed').scrollHeight;
+    return node;
+  }
+  function noteOutput(text) { $('noteResult').textContent = text; }
+  function noteId() {
+    const id = Number($('noteId').value);
+    if (!Number.isSafeInteger(id) || id < 1) throw new Error('请填写有效的正整数笔记 ID');
+    return id;
+  }
+  function noteBody() {
+    const title = $('noteTitle').value.trim(), content = $('noteContent').value.trim();
+    if (!title || !content) throw new Error('请先填写笔记标题和正文');
+    return {title, content};
+  }
+  function run(work, output=noteOutput) {
+    return Promise.resolve().then(work).catch(e => output('操作失败：' + e.message));
+  }
+  async function authenticate(kind) {
+    const name = $('username').value.trim(), password = $('password').value;
+    if (!name || !password) throw new Error('请输入用户名和密码');
+    if (kind === 'register') await request('/register', 'POST', {username:name, password});
+    const result = await request('/login', 'POST', {username:name, password});
+    token = result.access_token; username = result.username;
+    sessionStorage.setItem('jotang_token', token);
+    sessionStorage.setItem('jotang_username', username);
+    $('password').value = '';
+    $('authMessage').textContent = '登录成功';
+    setAuth();
+  }
+  $('loginBtn').addEventListener('click', () => run(() => authenticate('login'), t => $('authMessage').textContent=t));
+  $('registerBtn').addEventListener('click', () => run(() => authenticate('register'), t => $('authMessage').textContent=t));
+  $('logoutBtn').addEventListener('click', () => {
+    token = ''; username = ''; conversationId = null;
+    sessionStorage.removeItem('jotang_token'); sessionStorage.removeItem('jotang_username');
+    $('chatFeed').replaceChildren(); message('已退出，重新登录后可以开始新对话。'); setAuth();
+  });
+  $('readBtn').addEventListener('click', () => run(async () => {
+    const note = await request('/notes/' + noteId());
+    $('noteTitle').value = note.title || ''; $('noteContent').value = note.content || '';
+    noteOutput(JSON.stringify(note, null, 2));
+  }));
+  async function handleAsyncTask(result) {
+    if (!result.task_id) return result;
+    noteOutput('任务已进入队列：' + result.task_id);
+    for (let i=0; i<16; i++) {
+      await new Promise(resolve => setTimeout(resolve, 900));
+      const status = await request('/tasks/' + result.task_id, 'GET', undefined, true);
+      if (status.status === 'completed') return status.result || status;
+      if (status.status === 'failed') throw new Error(status.error || '异步任务失败');
+    }
+    return {message:'任务仍在队列中，请稍后查询', task_id:result.task_id};
+  }
+  function noteAction(action) {
+    run(async () => {
+      if (!token) throw new Error('请先登录');
+      const id = action === 'create' ? null : noteId();
+      if (action === 'delete' && !confirm('确定删除笔记 ' + id + ' 吗？')) return;
+      const method = {create:'POST',update:'PUT',delete:'DELETE'}[action];
+      const path = id === null ? '/notes' : '/notes/' + id;
+      const result = await request(path, method, action === 'delete' ? undefined : noteBody(), true);
+      const done = await handleAsyncTask(result);
+      if (done?.id) $('noteId').value = String(done.id);
+      noteOutput(JSON.stringify(done, null, 2));
+    });
+  }
+  $('createBtn').addEventListener('click', () => noteAction('create'));
+  $('updateBtn').addEventListener('click', () => noteAction('update'));
+  $('deleteBtn').addEventListener('click', () => noteAction('delete'));
+  $('newChatBtn').addEventListener('click', () => {
+    conversationId = null; $('chatFeed').replaceChildren(); message('新会话已开始。');
+  });
+  async function send() {
+    if (pending) return;
+    const text = $('chatMessage').value.trim();
+    if (!text) return;
+    if (!token) { message('请先登录才能使用 AI。'); return; }
+    pending = true; setAuth(); $('chatMessage').value = '';
+    message(text, 'user'); const bubble = message('正在思考…', 'assistant');
+    try {
+      const body = {message:text};
+      if (conversationId) body.conversation_id = conversationId;
+      const result = await request('/chat', 'POST', body, true);
+      conversationId = result.conversation_id;
+      bubble.textContent = result.reply;
+    } catch (err) { bubble.textContent = '暂时无法回复：' + err.message; }
+    finally { pending = false; setAuth(); }
+  }
+  $('sendBtn').addEventListener('click', send);
+  $('chatMessage').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  });
+  setAuth();
+</script>
+</body>
+</html>

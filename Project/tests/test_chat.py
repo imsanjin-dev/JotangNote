@@ -11,17 +11,20 @@ from openai import OpenAIError
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import app as api
 import ai_client
+from chat_session import clear_sessions
 
 client = TestClient(api.app)
 
 
 class ChatTests(unittest.TestCase):
     def setUp(self):
+        clear_sessions()
         api.app.dependency_overrides[api.get_current_user] = lambda: {
             "id": 9, "username": "student"
         }
 
     def tearDown(self):
+        clear_sessions()
         api.app.dependency_overrides.clear()
 
     def test_missing_key_returns_503(self):
@@ -33,7 +36,7 @@ class ChatTests(unittest.TestCase):
     def test_successful_provider_answer(self):
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value.choices = [
-            MagicMock(message=MagicMock(content="你好，我是笔记助手"))
+            MagicMock(message=MagicMock(content="你好，我是笔记助手", tool_calls=None))
         ]
         with patch.dict(os.environ, {"AI_API_KEY": "test-not-real", "AI_MODEL": "demo"}), patch.object(
             ai_client, "OpenAI", return_value=mock_client
