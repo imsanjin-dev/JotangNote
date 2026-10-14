@@ -1,6 +1,6 @@
 # 进阶篇 Part 2–4：会话管理、Tool Use 与网页
 
-> 2026-10-14。代码与模拟测试完成；尚未配置真实 AI Key。截图为实际网页加载，不代表真实 AI 已回复。
+> 2026-10-14。代码和 46 项自动化测试通过；YosHub DeepSeek 真实 API、Tool Use、多轮追问及 FastAPI 路由已验证。截图为早先未登录的实际网页加载，不代表浏览器已完成完整真实账户联调。
 
 ## 使用流程
 
@@ -61,15 +61,15 @@ JotangNote 使用 OpenAI Python SDK 的 Chat Completions 协议（client.chat.co
 
 ~~~ini
 AI_BASE_URL=https://api2.yoshub.com/v1
-AI_MODEL=deepseek-flash
+AI_MODEL=deepseek-v4.1-flash
 AI_API_KEY=你自己的YosHub令牌
 ~~~
 
-最终请求地址为 https://api2.yoshub.com/v1/chat/completions 。当前选用 DeepSeek V4.1 Flash，DeepSeek 官方对应的 API 名称为 deepseek-flash。用户本机 .env 已自行填写 deepseek-v4.1-flash；这是否是 YosHub 提供的有效别名仍未确认，所以保留本机原值而不强制覆盖。YosHub 令牌具体可调用的模型 ID、分组、单价及 Tool Calling 支持需以平台模型广场为准。真正使用前，应在模型广场核对模型 ID、分组、支持 Chat Completions + Tool Calling 的情况和单价。
+最终请求地址为 https://api2.yoshub.com/v1/chat/completions 。当前选用 DeepSeek V4.1 Flash。**2026-10-14 已使用 YosHub 真实令牌调用 deepseek-v4.1-flash 成功**，完成普通 Chat Completions（模型回复 OK）及真实 Tool Calling（模型主动请求 get_note_by_id）的实测。因此 deepseek-v4.1-flash 是本次接入的可用中转模型 ID；中转站定价、剩余额度及长期稳定性仍需在平台查看。
 
-2026-10-14 已把本地 .env 的 Base URL 写入 YosHub，模型由用户自行改为 deepseek-v4.1-flash；未填写 API Key，未执行真实付费调用。虚拟机对 /v1/models 的无密钥网络探测返回 HTTP 401：说明可访问地址，但没有通过 API 鉴权。
+2026-10-14 用户已自行在本机私有 .env 中设置 AI_API_KEY；虚拟机实际对 YosHub 发起请求并成功得到 OK，首个 SDK 请求计 65 tokens。此前无密钥访问 /v1/models 返回 HTTP 401，仅作为网络和鉴权区别的记录；实际用 Key 调用已通过。
 
-用户在 .env 中自行填写自己的 AI_API_KEY 后，需要重启 FastAPI 服务以重新加载变量，按顺序测试正常聊天、调用 get_note_by_id 的笔记总结和多轮追问。密钥不要提交 Git、截图或发给聊天。YosHub 为第三方中转站，聊天内容和自动读取的笔记全文会发送到它及可能的上游；请先用不含隐私内容的测试笔记验证。
+AI Key 仅保留于本机 .env，修改配置后须重启 FastAPI。YosHub 为第三方中转站，聊天内容和自动读取的笔记全文会发送到它及可能的上游；已使用合成的、不包含隐私的测试笔记验证模型工具能力。真实数据库笔记/网页账号流程仍需额外验收。
 
 ## 测试与现有限制
 
@@ -80,10 +80,19 @@ AI_API_KEY=你自己的YosHub令牌
 .venv/bin/python -m compileall -q Project/src Project/tests
 ~~~
 
-测试合计 46/46 通过（原有 35、新增 11）。覆盖两轮历史、跨用户会话拒绝、非法会话 ID、工具查笔记全文、工具调用与结果保留、非法工具或参数拒绝、笔记不存在、上游异常不污染历史、轮次裁剪、工具调用次数上限、网页 HTTP 返回。AI 请求采用模拟上游，**没有真实调用 AI 厂商**。
+测试合计 46/46 通过（原有 35、新增 11）。覆盖两轮历史、跨用户会话拒绝、非法会话 ID、工具查笔记全文、工具调用与结果保留、非法工具或参数拒绝、笔记不存在、上游异常不污染历史、轮次裁剪、工具调用次数上限、网页 HTTP 返回。这 46 项自动化测试主要使用模拟上游；另外已独立完成真实 DeepSeek 模型调用（下文），不能把模拟测试和真实联调混为一谈。
 
 独立 Uvicorn 启动后检查 GET / 和 GET /docs 均 HTTP 200，Windows Edge 已实际加载页面并截图。
 
-当前 .env 已有 JWT_SECRET_KEY，但没有 DB_PASSWORD 和 AI_API_KEY。启动真实账户访问时，需按根目录 README 导出数据库密码；真实 AI 上游验证须先自行配置可用 API Key（严禁写入 Git、聊天或截图）。因此当前结论是：**必做代码与自动化验收完成，真实第三方 AI / 网页登录全流程联调尚未完成**。不以模拟结果冒充真实结果。
+当前本机 .env 有 JWT_SECRET_KEY 与 AI_API_KEY，未写 DB_PASSWORD；已运行的 Uvicorn 8080 进程通过启动环境持有 DB_PASSWORD。真实网页登录、真实账号 JWT 与 MySQL 笔记全链路本轮尚未重新验收；不能将独立的 SDK 或 TestClient 合成笔记测试说成已完成真实浏览器登录。
+
+
+### 真实上游与接口验证（2026-10-14）
+
+- 使用项目 .venv 的 OpenAI Python SDK 与本机私有配置，真实请求 YosHub 的 DeepSeek Chat Completions：成功回复 OK；首个诊断请求计 65 tokens，验证了 API Key、模型 ID 和网络。
+- 运行真实 ai_client.chat_with_history，注入合成笔记读取回调（未访问 MySQL）：DeepSeek 主动调用 get_note_by_id(7)，成功读取仅存在于合成笔记正文的随机口令；下一轮追问正确回忆。首轮 10.44 秒，追问 6.46 秒。
+- 使用真实 FastAPI /chat 路由（TestClient）和真实 YosHub DeepSeek，合成 JWT 用户依赖及内存笔记回调：HTTP 200、返回 32 位会话 ID、工具正常返回笔记口令；跨用户重用该会话 ID 返回 404。
+- 正在运行的 Uvicorn 对 GET /、GET /docs、GET /openapi.json 均为 HTTP 200；本机 TCP 3306、6379、5672 可连通，不直接证明数据库登录和网页交互正常。
+- 本轮未在实际 MySQL 注册测试用户、创建真实笔记或做真实网页登录，因此尚未完成全部浏览器到数据库的端到端验收。密钥未写入 Git、日志、截图或本文件。
 
 可选会话持久化、评论、全文搜索等 Bonus 未实现。

@@ -8,7 +8,7 @@
 - **启蒙篇 Part 2：** 已完成 MySQL、Redis、RabbitMQ、AI Agent 的基础知识学习与笔记；RabbitMQ 另外完成 Docker + Pika 最小消息收发练习。
 - **启蒙篇 Part 3：** 已整理 HTTP、API、JSON、HTTPS 笔记。
 - **入门篇：** 笔记 CRUD、注册/登录已实现；JWT 和作者权限通过 8 项自动化模拟测试。Redis 查询缓存代码已实现，新增模拟测试 8 项及真实 MySQL + Redis 查询链路 9 项均通过；用户授权 PUT/DELETE 与异步写入的主要数据库联调此前已通过。RabbitMQ 笔记异步接口与 Worker 已实现（默认同步模式防止未启动消息队列时破坏旧接口）；RabbitMQ 服务端已安装，真实异步新增、修改、删除均已完成 MQ + MySQL + Redis 联调。
-- **进阶篇：** 已实现多轮会话、笔记查询 Tool Use 和前端工作台；46/46 项自动化测试通过。已使用 YosHub OpenAI 兼容接口并选择 DeepSeek，模型 ID 待中转站验证，尚未配置自己的 API Key，因此未进行真实上游联调。
+- **进阶篇：** 已实现多轮会话、笔记查询 Tool Use 和前端工作台；46/46 项自动化测试通过。已使用 YosHub OpenAI 兼容接口并选择 DeepSeek，真实模型 ID 和 API Key 均已在 Ubuntu 本机验证，普通聊天、真实 Tool Use 与多轮追问均通过；密钥未提交至 Git。
 
 ## 项目结构
 
@@ -64,7 +64,7 @@ export DB_PASSWORD
 
 ## AI 会话、Tool Use 与网页（进阶篇 Part 1–4）
 
-已经实现需要登录的 `POST /chat`、多轮会话和笔记 Tool Use；上游服务使用项目根目录 `.env` 的 `AI_BASE_URL`、`AI_MODEL`、`AI_API_KEY` 配置。当前准备使用 YosHub OpenAI Chat Completions 兼容接口调用 DeepSeek，详见 [AI Agent / YosHub 配置和测试](Project/docs/ai-agent.md)。尚未配置真实 API Key，不能认为已联通模型服务。
+已经实现需要登录的 `POST /chat`、多轮会话和笔记 Tool Use；上游服务使用项目根目录 `.env` 的 `AI_BASE_URL`、`AI_MODEL`、`AI_API_KEY` 配置。现使用 YosHub OpenAI Chat Completions 兼容接口调用 DeepSeek（模型 ID：deepseek-v4.1-flash），真实上游调用及 Tool Use 已通过；详情见 [AI Agent / YosHub 配置和测试](Project/docs/ai-agent.md)。密钥仅在本机私有 .env 中。
 
 ## 网页快速使用
 
@@ -78,6 +78,6 @@ export DB_PASSWORD
 - 注册：用户此前确认实际测试可用。
 - 登录 JWT、Token 校验与作者权限：自动化模拟测试 8/8 通过；本轮没有重新进行真实 MySQL 身份认证测试。
 - Redis 缓存：8 项模拟测试通过；Redis 6.0.16 真实服务的 13 项检查全部通过（MySQL 部分模拟）；随后 9 项真实 FastAPI + MySQL + Redis **查询链路**检查全部通过。授权 PUT/DELETE 后续已由 RabbitMQ 异步路径完成真实联调。
-- RabbitMQ 异步代码新增 13 项模拟与异常分支测试，项目合计 29/29 通过；真实异步 POST、PUT、DELETE → Worker → MySQL + Redis 已完成主要功能验收；AI Part 1 `/chat` 已实现但未做真实模型 API 联调，其余进阶功能尚未实现。
+- RabbitMQ 真实异步 POST、PUT、DELETE → Worker → MySQL + Redis 已完成主要功能验收。AI 进阶 Part 1–4 代码已实现，自动化 46/46 通过；2026-10-14 使用 YosHub DeepSeek 实测 Chat Completions、Tool Use、历史追问、FastAPI /chat 路由及跨用户会话隔离。实时网页使用真实账户登录、真实 MySQL 笔记查询与完整浏览器操作尚未在本轮重新端到端验收。
 
 启蒙篇运行截图保存在 [环境笔记](Notes/01-Environment/README.md) 中。
