@@ -55,6 +55,22 @@ POST /chat + JWT
 
 AI 工具只读公开笔记，不提供删除、修改、执行命令等工具。来自笔记的数据是不可信的模型上下文，不应当作为新的系统指令。
 
+## YosHub 中转站配置（2026-10-14）
+
+JotangNote 使用 OpenAI Python SDK 的 Chat Completions 协议（client.chat.completions.create），而不是 Anthropic Messages 或 Responses 协议。根据 https://docx.yoshub.com/：
+
+~~~ini
+AI_BASE_URL=https://api2.yoshub.com/v1
+AI_MODEL=gpt-5.6-sol
+AI_API_KEY=你自己的YosHub令牌
+~~~
+
+最终请求地址为 https://api2.yoshub.com/v1/chat/completions 。gpt-5.6-sol 是 YosHub 官方教程的示例模型，不代表当前用户的令牌可以调用它，或价格和工具能力符合要求。真正使用前，应在模型广场核对模型 ID、分组、支持 Chat Completions + Tool Calling 的情况和单价。
+
+2026-10-14 已把本地 .env 的 Base URL 与示例模型写入，未写 API Key，未执行真实付费调用。虚拟机对 /v1/models 的无密钥网络探测返回 HTTP 401：说明可访问地址，但没有通过 API 鉴权。
+
+用户在 .env 中自行填写自己的 AI_API_KEY 后，需要重启 FastAPI 服务以重新加载变量，按顺序测试正常聊天、调用 get_note_by_id 的笔记总结和多轮追问。密钥不要提交 Git、截图或发给聊天。YosHub 为第三方中转站，聊天内容和自动读取的笔记全文会发送到它及可能的上游；请先用不含隐私内容的测试笔记验证。
+
 ## 测试与现有限制
 
 2026-10-14 实测：
