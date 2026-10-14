@@ -25,6 +25,12 @@ def auth():
     return {"Authorization": "Bearer " + api.create_access_token(7)}
 
 class AuthTests(unittest.TestCase):
+    def setUp(self):
+        # These tests exercise the direct CRUD path, independent of the API's deployment mode.
+        mode = patch.dict(os.environ, {"NOTE_WRITE_MODE": "sync"})
+        mode.start()
+        self.addCleanup(mode.stop)
+
     def test_login_issues_token(self):
         c, _ = db({"id": 7, "username": "alice",
                    "password_hash": api.password_hasher.hash("correct")})

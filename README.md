@@ -7,7 +7,7 @@
 - **启蒙篇 Part 1：** 已完成终端 Hello World、FastAPI `GET /hello`，保存运行截图。
 - **启蒙篇 Part 2：** 已完成 MySQL、Redis、RabbitMQ、AI Agent 的基础知识学习与笔记；RabbitMQ 另外完成 Docker + Pika 最小消息收发练习。
 - **启蒙篇 Part 3：** 已整理 HTTP、API、JSON、HTTPS 笔记。
-- **入门篇：** 笔记 CRUD、注册/登录已实现；JWT 和作者权限通过 8 项自动化模拟测试。Redis 查询缓存代码已实现，新增模拟测试 8 项及真实 MySQL + Redis 查询链路 9 项均通过；用户授权 PUT/DELETE 与异步写入的主要数据库联调此前已通过。RabbitMQ 笔记异步接口与 Worker 已实现（默认同步模式防止未启动消息队列时破坏旧接口）；RabbitMQ 服务端已安装，真实异步新增、修改、删除均已完成 MQ + MySQL + Redis 联调。
+- **入门篇：** 笔记 CRUD、注册/登录已实现；JWT 和作者权限通过 8 项自动化模拟测试。Redis 查询缓存代码已实现，新增模拟测试 8 项及真实 MySQL + Redis 查询链路 9 项均通过；用户授权 PUT/DELETE 与异步写入的主要数据库联调此前已通过。RabbitMQ 笔记异步接口与 Worker 已实现（仓库的配置示例启用异步模式，代码未设置开关时仍有同步回退）；RabbitMQ 服务端已安装，真实异步新增、修改、删除均已完成 MQ + MySQL + Redis 联调。
 - **进阶篇：** 已实现多轮会话、笔记查询 Tool Use 和前端工作台；46/46 项自动化测试通过。已使用 YosHub OpenAI 兼容接口并选择 DeepSeek，真实模型 ID 和 API Key 均已在 Ubuntu 本机验证，普通聊天、真实 Tool Use 与多轮追问均通过；密钥未提交至 Git。
 
 ## 项目结构
@@ -60,7 +60,7 @@ export DB_PASSWORD
 
 ## RabbitMQ 异步操作
 
-可切换异步写入、后台消费者、任务状态查询以及部署流程，见 [RabbitMQ 异步笔记操作](Project/docs/rabbitmq-async.md)。**默认仍为同步写入；此前已经通过 RabbitMQ + Worker + MySQL + Redis 的异步真实链路验收。**
+招新入门篇 Part 3 使用 `NOTE_WRITE_MODE=async`，需运行 RabbitMQ 与 `note_worker.py`；写接口返回 202 已入队，调用 `GET /tasks/{task_id}` 查询最终执行结果。当前私有配置和公开示例均启用异步模式；代码没有开关时回退同步模式。见 [RabbitMQ 异步笔记操作](Project/docs/rabbitmq-async.md)。真实新增、修改、删除及后续数据库/缓存验证均已有记录。
 
 ## AI 会话、Tool Use 与网页（进阶篇 Part 1–4）
 
@@ -71,6 +71,8 @@ export DB_PASSWORD
 按照上面的命令启动 Uvicorn 后，打开 http://虚拟机IP:8080/ 使用笔记管理与 AI 聊天工作台；也可继续打开 /docs 使用 Swagger。网页无需 Node 或前端构建环境。登录前需在终端设置 DB_PASSWORD；聊天另需在 .env 中自行设置 AI_API_KEY（不要上传密钥）。
 
 网页截图和关键流程见 [进阶篇说明](Project/docs/ai-agent.md)。服务端会话仅在内存保留 30 分钟、最近 10 轮，重启不会保留。在 AI_API_KEY 缺失时聊天返回 503，而非生成虚假结果。
+
+官方题面逐项对照及剩余截图/正式网站提交事项见 [招新交付检查](Project/docs/recruitment-acceptance.md)。
 
 ## 验收状态
 

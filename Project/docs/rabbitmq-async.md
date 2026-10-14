@@ -46,7 +46,7 @@ export DB_PASSWORD
 .venv/bin/python Project/src/note_worker.py
 ```
 
-另一个终端重启 API 进程，并在项目根 `.env` 设置 `NOTE_WRITE_MODE=async`（默认是 `sync`，保持既有接口同步行为不变），再启动：
+另一个终端重启 API 进程，并在项目根 `.env` 设置 `NOTE_WRITE_MODE=async`（提交示例 `.env.example` 已配置 `async`；须确保 RabbitMQ 和 Worker 同时运行），再启动：
 
 ```bash
 .venv/bin/uvicorn app:app --app-dir Project/src --host 0.0.0.0 --port 8080
@@ -69,7 +69,7 @@ export DB_PASSWORD
 - **真实异步修改已通过：** PUT 任务 ID `8abf52caf40f4eeebe355952f68477c6` 最终状态为 `completed`，Worker 返回“修改成功”；下一次 GET 前旧缓存键已经不存在（TTL -2），GET 返回新标题、正文，再次写入缓存（TTL 300），缓存与响应一致。
 - **真实 RabbitMQ 已通过：** 服务运行正常，项目业务账号连接真实 broker 的消息发布、收取、ACK 检查通过；主队列单 Worker 订阅，观察时消费者 1、待处理消息 0。
 - **异常/权限逻辑：** 29 项本地自动化测试通过（其中 13 项 RabbitMQ 模拟与失败分支），覆盖任务状态 401/403/404/503、消息无法投递、后台错误记录、手动 ACK，以及 Redis 在数据库提交后不可用等情形；这些是模拟测试，不代表真实生产故障已经发生。
-- **真实异步 DELETE 尚未验收：** 尝试发起代用户执行的已认证删除 HTTP 请求时被远程工具安全限制阻止，没有实际删除任何数据。笔记 ID `4` 仍存在，标题为“RabbitMQ异步修改测试”。需由用户自己在 Swagger 发送该测试笔记的 DELETE（202），之后可通过 SSH 独立核对任务和 Redis 失效。若暂时跳过，不能标记入门篇 RabbitMQ 整体真实写链路完成。
+- **真实异步 DELETE 已验收：** 2026-10-14 后续用户用 Swagger 发起笔记 ID 4 的 DELETE，验收记录确认任务 completed、Worker 返回删除成功、GET /notes/4 返回 404，Redis 缓存已经失效。本次复查 GET /notes/4 仍为 HTTP 404。
 - **安全限制：** 不能以签发测试用 JWT 取代对真实登录的验收；也不应从环境中导出账号密码或 Token。
 
 ## 技术与边界
@@ -78,4 +78,4 @@ export DB_PASSWORD
 - `basic_qos(prefetch_count=1)` 和单个 Worker 将未确认消息限制为一条，降低乱序风险；`auto_ack=False` 与执行后 `basic_ack` 让消息在处理前不会自动删除。
 - Redis 的 `jotang:task:<id>` 仅保存进度与结果，TTL 为一天，不是永久任务历史；原有 `jotang:note:<id>` 保存的是笔记查询缓存，两者分开。
 - **可靠性限制：** 当前是招新教学实现，并不保证严格的 exactly-once：Worker 在 MySQL commit 后、保存完成状态/ACK 前崩溃时 RabbitMQ 可能重投递，尤其是 create 有重复创建风险；若 MySQL 已成功而 Redis 状态更新失败，也可能让状态滞留在 processing。当前代码会记录日志并避免因完成状态写入失败而主动再次执行数据库写入。生产设计需增加 MySQL 任务表/唯一任务 ID、事务内幂等检查、持久化结果与故障恢复。题面将顺序性与幂等性强化列为加分项，这里暂不声称已完成。
-- 默认同步模式在联调前保留，防止 RabbitMQ 尚未运行时破坏已有 CRUD；切换成 async 是**系统整体开关**，非 HTTP 请求参数。
+- 本项目 `.env.example` 和当前实际 `.env` 均配置 `NOTE_WRITE_MODE=async` 以符合招新要求；代码在没有设置开关时回退为同步模式，便于早期无 Broker 的 CRUD 学习。切换是系统整体开关，非请求参数。

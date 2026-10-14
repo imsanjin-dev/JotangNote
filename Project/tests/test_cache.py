@@ -30,6 +30,12 @@ def authorization():
 
 
 class NoteCacheTests(unittest.TestCase):
+    def setUp(self):
+        # These tests exercise the direct CRUD path, independent of the API's deployment mode.
+        mode = patch.dict(os.environ, {"NOTE_WRITE_MODE": "sync"})
+        mode.start()
+        self.addCleanup(mode.stop)
+
     def test_cache_hit_skips_mysql(self):
         record = {"id": 42, "title": "Cached", "content": "hello"}
         with patch.object(cache, "redis_client") as r, patch.object(api, "get_connection") as db:
