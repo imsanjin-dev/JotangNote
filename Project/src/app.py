@@ -6,7 +6,7 @@ from typing import Annotated
 import jwt
 import pymysql
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import PlainTextResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError
@@ -134,7 +134,22 @@ def get_note(note_id: int):
 
 
 @app.post("/notes", status_code=201)
-def create_note(note: NoteCreate, current_user: Annotated[dict, Depends(get_current_user)]):
+def create_note(
+    note: NoteCreate,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    response: Response,
+):
+    if os.getenv("NOTE_WRITE_MODE", "sync") == "async":
+        from note_queue import publish_note_task
+
+        response.status_code = 202
+        return publish_note_task(
+            "create", current_user["id"], title=note.title, content=note.content
+        )
+    return create_note_db(note, current_user)
+
+
+def create_note_db(note: NoteCreate, current_user: dict):
     connection = None
 
     try:
@@ -224,7 +239,24 @@ def login_user(user: UserLogin):
 
 
 @app.put("/notes/{note_id}")
-def update_note(note_id: int, note: NoteUpdate, current_user: Annotated[dict, Depends(get_current_user)]):
+def update_note(
+    note_id: int,
+    note: NoteUpdate,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    response: Response,
+):
+    if os.getenv("NOTE_WRITE_MODE", "sync") == "async":
+        from note_queue import publish_note_task
+
+        response.status_code = 202
+        return publish_note_task(
+            "update", current_user["id"], note_id=note_id,
+            title=note.title, content=note.content,
+        )
+    return update_note_db(note_id, note, current_user)
+
+
+def update_note_db(note_id: int, note: NoteUpdate, current_user: dict):
     connection = None
     try:
         connection = get_connection()
@@ -255,7 +287,20 @@ def update_note(note_id: int, note: NoteUpdate, current_user: Annotated[dict, De
             connection.close()
 
 @app.delete("/notes/{note_id}")
-def delete_note(note_id: int, current_user: Annotated[dict, Depends(get_current_user)]):
+def delete_note(
+    note_id: int,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    response: Response,
+):
+    if os.getenv("NOTE_WRITE_MODE", "sync") == "async":
+        from note_queue import publish_note_task
+
+        response.status_code = 202
+        return publish_note_task("delete", current_user["id"], note_id=note_id)
+    return delete_note_db(note_id, current_user)
+
+
+def delete_note_db(note_id: int, current_user: dict):
     connection=None
     try:
         connection=get_connection()
@@ -281,3 +326,22 @@ def delete_note(note_id: int, current_user: Annotated[dict, Depends(get_current_
     finally:
         if connection is not None:
             connection.close()
+
+
+@app.get("/tasks/{task_id}")
+def get_task_status(task_id: str, current_user: Annotated[dict, Depends(get_current_user)]):
+    """Only the requesting user can inspect their async task."""
+    if len(task_id) != 32 or any(c not in "0123456789abcdef" for c in task_id):
+        raise HTTPException(status_code=404, detail="任务不存在")
+    from note_queue import load_status
+    import redis
+
+    try:
+        task = load_status(task_id)
+    except (redis.RedisError, OSError, ValueError, TypeError):
+        raise HTTPException(status_code=503, detail="任务状态服务暂不可用")
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在或状态已过期")
+    if task["user_id"] != current_user["id"]:
+        raise HTTPException(status_code=403, detail="不能查看其他用户的任务")
+    return {key: value for key, value in task.items() if key != "user_id"}
