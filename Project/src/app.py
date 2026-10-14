@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel
 from pwdlib import PasswordHash
+from note_cache import cache_note, get_cached_note, invalidate_note_cache
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 password_hasher = PasswordHash.recommended()
@@ -106,6 +107,10 @@ def hello():
 
 @app.get("/notes/{note_id}")
 def get_note(note_id: int):
+    cached_note = get_cached_note(note_id)
+    if cached_note is not None:
+        return cached_note
+
     connection = None
 
     try:
@@ -124,6 +129,7 @@ def get_note(note_id: int):
     if note is None:
         raise HTTPException(status_code=404, detail="笔记不存在")
 
+    cache_note(note_id, note)
     return note
 
 
@@ -238,6 +244,7 @@ def update_note(note_id: int, note: NoteUpdate, current_user: Annotated[dict, De
                 connection.rollback()
                 raise HTTPException(status_code=500, detail="数据更新异常")
         connection.commit()
+        invalidate_note_cache(note_id)
         return {"id": note_id, "message": "修改成功"}
     except pymysql.MySQLError:
         if connection is not None:
@@ -265,6 +272,7 @@ def delete_note(note_id: int, current_user: Annotated[dict, Depends(get_current_
                 connection.rollback()
                 raise HTTPException(status_code=404, detail=f"笔记 ID {note_id} 不存在")
         connection.commit()
+        invalidate_note_cache(note_id)
         return {"id": note_id, "message": "删除成功"}
     except pymysql.MySQLError:
         if connection is not None:

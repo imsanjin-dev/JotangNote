@@ -7,3 +7,4 @@ PyJWT==2.15.1
 python-dotenv==1.2.4
 pika==1.4.4
 httpx2==2.13.1  # FastAPI TestClient / automated tests
+redis==7.4.1  # Redis note lookup cache

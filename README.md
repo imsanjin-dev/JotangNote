@@ -7,14 +7,14 @@
 - **启蒙篇 Part 1：** 已完成终端 Hello World、FastAPI `GET /hello`，保存运行截图。
 - **启蒙篇 Part 2：** 已完成 MySQL、Redis、RabbitMQ、AI Agent 的基础知识学习与笔记；RabbitMQ 另外完成 Docker + Pika 最小消息收发练习。
 - **启蒙篇 Part 3：** 已整理 HTTP、API、JSON、HTTPS 笔记。
-- **入门篇：** 笔记 CRUD、注册/登录已实现；JWT 和作者权限通过 8 项自动化模拟测试，真实 MySQL 联调尚待验收。Redis 缓存、RabbitMQ 笔记异步操作尚未实现。
+- **入门篇：** 笔记 CRUD、注册/登录已实现；JWT 和作者权限通过 8 项自动化模拟测试。Redis 查询缓存代码已实现，新增模拟测试 8 项及真实 MySQL + Redis 查询链路 9 项均通过；授权修改/删除的真实数据库联调待验收。RabbitMQ 笔记异步操作尚未实现。
 - **进阶篇：** AI 对话、上下文、Tool Use 和前端仍待完成。
 
 ## 项目结构
 
 - [Notes/](Notes/README.md)：启蒙篇学习笔记、截图和练习记录。
 - [Project/src/](Project/src/)：已编写的 Python 源码，包括 Hello World、FastAPI 和 RabbitMQ 示例。
-- [Project/docs/](Project/docs/)：JWT 登录认证与作者权限的说明和验收步骤。
+- [Project/docs/](Project/docs/)：JWT 登录认证、Redis 查询缓存的说明与验收步骤。
 - [Project/tests/](Project/tests/)：API 自动化测试。
 - [requirements.txt](requirements.txt)：项目依赖；[.python-version](.python-version) 为 Python 版本提示。
 
@@ -54,11 +54,16 @@ export DB_PASSWORD
 
 通过 http://<虚拟机 IP>:8080/docs 打开 Swagger，登录获取 access_token 后使用 Authorize 按钮授权。细节见 [JWT 认证与作者权限](Project/docs/authentication.md)。
 
+## Redis 缓存
+
+入门篇 Part 2 已接入 Redis 查询缓存；缓存键、TTL、缓存失效与安装联调见 [Redis 缓存实践](Project/docs/redis-cache.md)。Python 客户端与 Redis 服务端均已安装并通过连通性检查；首次在新 Ubuntu 环境部署时仍需按说明安装服务端。
+
 ## 验收状态
 
 - 基础笔记 CRUD：用户此前通过 Swagger 实际验收。
 - 注册：用户此前确认实际测试可用。
 - 登录 JWT、Token 校验与作者权限：自动化模拟测试 8/8 通过，**真实 MySQL 端到端测试尚未验收**。
-- Redis、RabbitMQ 后续任务及 AI 进阶功能：尚待完成。
+- Redis 缓存：8 项模拟测试通过；Redis 6.0.16 真实服务的 13 项检查全部通过（MySQL 部分模拟）；随后 9 项真实 FastAPI + MySQL + Redis **查询链路**检查全部通过。真实授权 PUT/DELETE 与 MySQL 的联合联调尚未完成。
+- RabbitMQ 笔记异步操作与 AI 进阶功能：尚待实现。
 
 启蒙篇运行截图保存在 [环境笔记](Notes/01-Environment/README.md) 中。
