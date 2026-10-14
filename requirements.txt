@@ -8,3 +8,5 @@ python-dotenv==1.2.4
 pika==1.4.4
 httpx2==2.13.1  # FastAPI TestClient / automated tests
 redis==7.4.1  # Redis note lookup cache
+
+openai==3.31.0  # OpenAI-compatible SDK for MiMo /chat

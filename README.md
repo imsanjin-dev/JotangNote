@@ -8,13 +8,13 @@
 - **启蒙篇 Part 2：** 已完成 MySQL、Redis、RabbitMQ、AI Agent 的基础知识学习与笔记；RabbitMQ 另外完成 Docker + Pika 最小消息收发练习。
 - **启蒙篇 Part 3：** 已整理 HTTP、API、JSON、HTTPS 笔记。
 - **入门篇：** 笔记 CRUD、注册/登录已实现；JWT 和作者权限通过 8 项自动化模拟测试。Redis 查询缓存代码已实现，新增模拟测试 8 项及真实 MySQL + Redis 查询链路 9 项均通过；授权修改/删除的真实数据库联调待验收。RabbitMQ 笔记异步接口与 Worker 已实现（默认同步模式防止未启动消息队列时破坏旧接口）；RabbitMQ 服务端已安装，真实异步新增、修改、删除均已完成 MQ + MySQL + Redis 联调。
-- **进阶篇：** AI 对话、上下文、Tool Use 和前端仍待完成。
+- **进阶篇：** 已实现基础 `/chat` 单轮 AI 调用与模拟测试；尚未配置真实 API Key，因此未进行真实上游联调。会话管理、Tool Use 和前端仍待实现。
 
 ## 项目结构
 
 - [Notes/](Notes/README.md)：启蒙篇学习笔记、截图和练习记录。
 - [Project/src/](Project/src/)：已编写的 Python 源码，包括 Hello World、FastAPI 和 RabbitMQ 示例。
-- [Project/docs/](Project/docs/)：JWT 登录认证、Redis 查询缓存、RabbitMQ 异步操作的说明与验收步骤。
+- [Project/docs/](Project/docs/)：JWT 登录认证、Redis 查询缓存、RabbitMQ 异步操作、AI 单轮聊天的说明与验收步骤。
 - [Project/tests/](Project/tests/)：API 自动化测试。
 - [requirements.txt](requirements.txt)：项目依赖；[.python-version](.python-version) 为 Python 版本提示。
 
@@ -62,12 +62,16 @@ export DB_PASSWORD
 
 可切换异步写入、后台消费者、任务状态查询以及部署流程，见 [RabbitMQ 异步笔记操作](Project/docs/rabbitmq-async.md)。**目前默认仍为同步写入，异步真实消息队列联调待进行。**
 
+## AI 单轮聊天（进阶篇 Part 1）
+
+已增加需要登录的 `POST /chat`；上游 AI 接口可以通过项目根目录 `.env` 中的 `AI_BASE_URL`、`AI_MODEL`、`AI_API_KEY` 配置。详情参见 [AI Chat 实践](Project/docs/ai-chat.md)。当前只有模拟测试，不代表已打通真实模型服务。
+
 ## 验收状态
 
 - 基础笔记 CRUD：用户此前通过 Swagger 实际验收。
 - 注册：用户此前确认实际测试可用。
 - 登录 JWT、Token 校验与作者权限：自动化模拟测试 8/8 通过，**真实 MySQL 端到端测试尚未验收**。
 - Redis 缓存：8 项模拟测试通过；Redis 6.0.16 真实服务的 13 项检查全部通过（MySQL 部分模拟）；随后 9 项真实 FastAPI + MySQL + Redis **查询链路**检查全部通过。真实授权 PUT/DELETE 与 MySQL 的联合联调尚未完成。
-- RabbitMQ 异步代码新增 13 项模拟与异常分支测试，项目合计 29/29 通过；真实异步 POST、PUT、DELETE → Worker → MySQL + Redis 已完成主要功能验收；AI 进阶功能尚未实现。
+- RabbitMQ 异步代码新增 13 项模拟与异常分支测试，项目合计 29/29 通过；真实异步 POST、PUT、DELETE → Worker → MySQL + Redis 已完成主要功能验收；AI Part 1 `/chat` 已实现但未做真实模型 API 联调，其余进阶功能尚未实现。
 
 启蒙篇运行截图保存在 [环境笔记](Notes/01-Environment/README.md) 中。

@@ -10,9 +10,10 @@ from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import PlainTextResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pwdlib import PasswordHash
 from note_cache import cache_note, get_cached_note, invalidate_note_cache
+from ai_client import chat_once
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 password_hasher = PasswordHash.recommended()
@@ -37,6 +38,10 @@ class NoteCreate(BaseModel):
 class NoteUpdate(BaseModel):
     title: str
     content: str
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
 
 
 def get_connection():
@@ -345,3 +350,14 @@ def get_task_status(task_id: str, current_user: Annotated[dict, Depends(get_curr
     if task["user_id"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="不能查看其他用户的任务")
     return {key: value for key, value in task.items() if key != "user_id"}
+
+
+@app.post("/chat")
+def chat(
+    request: ChatRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+):
+    """Advanced Part 1: authenticated one-shot chat (no history/tools yet)."""
+    if not request.message.strip():
+        raise HTTPException(status_code=422, detail="消息不能为空")
+    return {"reply": chat_once(request.message)}
