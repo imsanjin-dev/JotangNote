@@ -6,6 +6,18 @@ from fastapi.responses import PlainTextResponse
 
 from pydantic import BaseModel
 
+from pwdlib import PasswordHash
+
+password_hasher = PasswordHash.recommended()
+
+class UserRegister(BaseModel):
+    username: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
 class NoteCreate(BaseModel):
     title: str
@@ -72,17 +84,74 @@ def create_note(note: NoteCreate):
             if affected_rows != 1:
                 connection.rollback()
                 raise HTTPException(status_code=500, detail="笔记插入失败")
-
             new_id = cursor.lastrowid
         connection.commit()
         return {"id": new_id, "message": "创建成功"}
     except pymysql.MySQLError:
         if connection is not None:
             connection.rollback()
+        raise HTTPException(status_code=500, detail="笔记插入失败")
+    finally:
+        if connection is not None:
+            connection.close()
+
+@app.post("/register",status_code=201)
+def create_user(user: UserRegister):
+    connection = None
+    try:
+        connection=get_connection()
+        hashed = password_hasher.hash(user.password)
+        with connection.cursor() as cursor:
+            sql = "INSERT INTO users (username, password_hash) VALUES (%s, %s);"
+            affected_rows=cursor.execute(sql,(user.username,hashed))
+            if affected_rows != 1:
+                connection.rollback()
+                raise HTTPException(status_code=500, detail="用户创建失败")
+            new_id=cursor.lastrowid
+        connection.commit()
+        return {"id": new_id, "message": "创建成功"}
+
+    except pymysql.IntegrityError as error:
+        if connection is not None:
+            connection.rollback()
+
+        if error.args[0] == 1062:
+            raise HTTPException(
+                status_code=409,
+                detail="用户名已存在"
+            )
+        raise HTTPException(
+            status_code=500,
+            detail="用户创建失败"
+        )
+    except pymysql.MySQLError:
+            if connection is not None:
+                connection.rollback()
+            raise HTTPException(status_code=500, detail="用户创建失败")
+    finally:
+        if connection is not None:
+            connection.close()
+
+
+@app.post("/login")
+def login_user(user: UserLogin):
+    connection = None
+    try:
+        connection = get_connection()
+        with connection.cursor() as cursor:
+            sql = "SELECT id, username, password_hash FROM users WHERE username = %s"
+            cursor.execute(sql, (user.username,))
+            existing_user = cursor.fetchone()
+    except pymysql.MySQLError:
         raise HTTPException(status_code=500, detail="数据库查询失败")
     finally:
         if connection is not None:
             connection.close()
+
+    if existing_user is None or not password_hasher.verify(user.password, existing_user["password_hash"]):
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+    return {"id": existing_user["id"], "username": existing_user["username"], "message": "登录成功"}
 
 
 @app.put("/notes/{note_id}")
@@ -106,7 +175,7 @@ def update_note(note_id: int, note: NoteUpdate):
     except pymysql.MySQLError:
         if connection is not None:
             connection.rollback()
-        raise HTTPException(status_code=500, detail="数据库查询失败")
+        raise HTTPException(status_code=500, detail="数据更新异常")
     finally:
         if connection is not None:
             connection.close()
