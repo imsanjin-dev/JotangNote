@@ -61,13 +61,13 @@ JotangNote 使用 OpenAI Python SDK 的 Chat Completions 协议（client.chat.co
 
 ~~~ini
 AI_BASE_URL=https://api2.yoshub.com/v1
-AI_MODEL=gpt-5.6-sol
+AI_MODEL=deepseek-flash
 AI_API_KEY=你自己的YosHub令牌
 ~~~
 
-最终请求地址为 https://api2.yoshub.com/v1/chat/completions 。gpt-5.6-sol 是 YosHub 官方教程的示例模型，不代表当前用户的令牌可以调用它，或价格和工具能力符合要求。真正使用前，应在模型广场核对模型 ID、分组、支持 Chat Completions + Tool Calling 的情况和单价。
+最终请求地址为 https://api2.yoshub.com/v1/chat/completions 。当前选用 DeepSeek V4.1 Flash，DeepSeek 官方对应的 API 名称为 deepseek-flash。用户本机 .env 已自行填写 deepseek-v4.1-flash；这是否是 YosHub 提供的有效别名仍未确认，所以保留本机原值而不强制覆盖。YosHub 令牌具体可调用的模型 ID、分组、单价及 Tool Calling 支持需以平台模型广场为准。真正使用前，应在模型广场核对模型 ID、分组、支持 Chat Completions + Tool Calling 的情况和单价。
 
-2026-10-14 已把本地 .env 的 Base URL 与示例模型写入，未写 API Key，未执行真实付费调用。虚拟机对 /v1/models 的无密钥网络探测返回 HTTP 401：说明可访问地址，但没有通过 API 鉴权。
+2026-10-14 已把本地 .env 的 Base URL 写入 YosHub，模型由用户自行改为 deepseek-v4.1-flash；未填写 API Key，未执行真实付费调用。虚拟机对 /v1/models 的无密钥网络探测返回 HTTP 401：说明可访问地址，但没有通过 API 鉴权。
 
 用户在 .env 中自行填写自己的 AI_API_KEY 后，需要重启 FastAPI 服务以重新加载变量，按顺序测试正常聊天、调用 get_note_by_id 的笔记总结和多轮追问。密钥不要提交 Git、截图或发给聊天。YosHub 为第三方中转站，聊天内容和自动读取的笔记全文会发送到它及可能的上游；请先用不含隐私内容的测试笔记验证。
 

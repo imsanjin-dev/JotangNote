@@ -8,7 +8,7 @@
 - **启蒙篇 Part 2：** 已完成 MySQL、Redis、RabbitMQ、AI Agent 的基础知识学习与笔记；RabbitMQ 另外完成 Docker + Pika 最小消息收发练习。
 - **启蒙篇 Part 3：** 已整理 HTTP、API、JSON、HTTPS 笔记。
 - **入门篇：** 笔记 CRUD、注册/登录已实现；JWT 和作者权限通过 8 项自动化模拟测试。Redis 查询缓存代码已实现，新增模拟测试 8 项及真实 MySQL + Redis 查询链路 9 项均通过；用户授权 PUT/DELETE 与异步写入的主要数据库联调此前已通过。RabbitMQ 笔记异步接口与 Worker 已实现（默认同步模式防止未启动消息队列时破坏旧接口）；RabbitMQ 服务端已安装，真实异步新增、修改、删除均已完成 MQ + MySQL + Redis 联调。
-- **进阶篇：** 已实现多轮会话、笔记查询 Tool Use 和前端工作台；46/46 项自动化测试通过。已按 YosHub 文档配置本地 OpenAI 兼容接口，但尚未提供自己的 API Key，因此未进行真实上游联调。
+- **进阶篇：** 已实现多轮会话、笔记查询 Tool Use 和前端工作台；46/46 项自动化测试通过。已使用 YosHub OpenAI 兼容接口并选择 DeepSeek，模型 ID 待中转站验证，尚未配置自己的 API Key，因此未进行真实上游联调。
 
 ## 项目结构
 
@@ -64,7 +64,7 @@ export DB_PASSWORD
 
 ## AI 会话、Tool Use 与网页（进阶篇 Part 1–4）
 
-已经实现需要登录的 `POST /chat`、多轮会话和笔记 Tool Use；上游服务使用项目根目录 `.env` 的 `AI_BASE_URL`、`AI_MODEL`、`AI_API_KEY` 配置。当前准备使用 YosHub OpenAI Chat Completions 兼容接口，详见 [AI Agent / YosHub 配置和测试](Project/docs/ai-agent.md)。尚未配置真实 API Key，不能认为已联通模型服务。
+已经实现需要登录的 `POST /chat`、多轮会话和笔记 Tool Use；上游服务使用项目根目录 `.env` 的 `AI_BASE_URL`、`AI_MODEL`、`AI_API_KEY` 配置。当前准备使用 YosHub OpenAI Chat Completions 兼容接口调用 DeepSeek，详见 [AI Agent / YosHub 配置和测试](Project/docs/ai-agent.md)。尚未配置真实 API Key，不能认为已联通模型服务。
 
 ## 网页快速使用
 
