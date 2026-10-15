@@ -1,4 +1,4 @@
-# Python 3.13 (see .python-version); tested on Ubuntu 22.04
+# Python 3.13; tested on Ubuntu 22.04
 fastapi==0.142.2
 uvicorn==0.54.0
 PyMySQL==1.2.3
