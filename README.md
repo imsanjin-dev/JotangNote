@@ -74,6 +74,10 @@ export DB_PASSWORD
 
 官方题面逐项对照及剩余截图/正式网站提交事项见 [招新交付检查](Project/docs/recruitment-acceptance.md)。
 
+## 正式截图与真实接口回归
+
+入门篇 / 进阶篇仍需真实操作的流程截图和网站提交。请先根据 [招新交付检查](Project/docs/recruitment-acceptance.md) 整理证据；另提供 [无密码回显的真实 HTTP 验收脚本](Project/scripts/live_acceptance.py)，默认只创建并清理自己的临时测试笔记，支持同步/异步写入流程。脚本本身已通过语法检查，**尚未执行带真实账号和 MySQL 的全链路回归**，不可代替人工截图与最终网站提交。
+
 ## 验收状态
 
 - 基础笔记 CRUD：用户此前通过 Swagger 实际验收。
