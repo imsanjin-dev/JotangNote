@@ -13,7 +13,7 @@
 
 ## Ubuntu 环境和启动
 
-RabbitMQ 服务端需要 sudo 安装，**由用户亲自执行**：
+Ubuntu 安装 RabbitMQ 服务端：
 
 ```bash
 sudo apt update
@@ -22,7 +22,7 @@ sudo systemctl enable --now rabbitmq-server
 sudo systemctl status rabbitmq-server
 ```
 
-首次创建非管理员业务账户（只在自己 Ubuntu 终端运行，切勿把密码发给聊天）：
+首次安装时创建单独的业务账户：
 
 ```bash
 cd ~/jotang-recruit/JotangNote
@@ -34,9 +34,9 @@ unset MQ_PASS
 chmod 600 .env
 ```
 
-本示例用户只授予默认 vhost (`/`) 权限，不授予 management/admin 标签。生产系统应该进一步划分 vhost、队列与最小权限、配置 TLS 并限制网络监听。Ubuntu 默认可能对整个网段监听 5672；本项目 API 与 Worker 均在同一 VM，建议最终只让 RabbitMQ 监听 127.0.0.1，需要 sudo 修改系统配置，不属于 Python 客户端自行控制的范围。若用户已存在，需要通过交互式安全方式更新密码，而不是再次 `add_user`。
+本项目的 API 和 Worker 在同一台虚拟机上，RabbitMQ 不需要对公网开放。如果 `jotang` 用户已存在，应修改其密码，而不是再次执行 `add_user`。
 
-先运行一个**独立进程**作为 Worker。由于当前已有 MySQL 密码通常只通过运行 API 的终端环境变量提供，新开的 Worker 终端也要独立设置（不把数据库密码提交到 Git）：
+Worker 和 API 分别运行在两个终端。先在 Worker 终端设置数据库密码并启动：
 
 ```bash
 cd ~/jotang-recruit/JotangNote
@@ -46,22 +46,19 @@ export DB_PASSWORD
 .venv/bin/python Project/src/note_worker.py
 ```
 
-另一个终端重启 API 进程，并在项目根 `.env` 设置 `NOTE_WRITE_MODE=async`（提交示例 `.env.example` 已配置 `async`；须确保 RabbitMQ 和 Worker 同时运行），再启动：
+另一个终端也需要设置 `DB_PASSWORD`，并在 `.env` 中启用 `NOTE_WRITE_MODE=async`，然后启动 API：
 
 ```bash
 .venv/bin/uvicorn app:app --app-dir Project/src --host 0.0.0.0 --port 8080
 ```
 
-注意：仅重新修改 `.env` 不能保证已在运行的 Python 进程自动加载，**需要重启 API**；Worker 启动时也必须能读取密钥、数据库凭据。与现有 `DB_PASSWORD` 配置同理。
+修改 `.env` 后应重启 API 和 Worker，使新的配置生效。
 
-## Swagger 实测步骤（后续复测参考）
+## 操作步骤
 
-1. 在 Swagger `/docs` 登录并 Authorize。创建一篇**专用测试笔记**，预期 HTTP 202 + `task_id`，不要误认为已立即入库。
-2. `GET /tasks/{task_id}` 预期先后看到 `queued/processing` 与 `completed`；取回完成结果中的笔记 ID，调用 `GET /notes/{id}` 查真实 MySQL 与缓存。
-3. 提交 PUT，等任务完成后 GET 确认是新内容、缓存已失效；DELETE 同理，完成后 GET 应返回 404。
-4. 换另一个用户提交修改/删除任务，应在 Worker 最终显示 `failed`（403），数据不变；尝试读取他人 task 应为 403。
-5. 临时停 Worker，仅投递到 RabbitMQ，确认任务保持 queued；重启 Worker 后完成。再测试 RabbitMQ 不可用时新写请求应返回 503 而不是假成功。
-6. 将测试笔记清理干净，留存必要的 Swagger/队列/结果截图及真实 HTTP 结果，再交付 Git。
+1. 在 Swagger `/docs` 登录并授权，提交新增笔记请求；接口返回 HTTP 202 和任务 ID。
+2. 用 `GET /tasks/{task_id}` 查询任务状态，完成后根据返回的笔记 ID 查询正文。
+3. 再分别提交修改和删除，等待任务完成后查询笔记，确认内容更新或返回 404。
 
 ## 测试过程
 
@@ -70,21 +67,21 @@ export DB_PASSWORD
 - 异步修改笔记后，新的内容可查询且对应旧 Redis 缓存被删除；异步删除笔记后，再次查询返回 404。
 - `test_async.py` 覆盖任务查询权限、消息发布失败、Worker 错误、ACK 等分支。当前并未实现严格的重复消息幂等保证，这部分属于加分项。
 
-## HTTP 202 与任务完成截图
+## 异步操作截图（2026-10-15）
 
-在 `NOTE_WRITE_MODE=async`、RabbitMQ、Redis、MySQL、Worker 均运行时，通过 Swagger 的真实 `POST /notes` 新建无隐私测试笔记，请求返回 HTTP **202 Accepted**，`task_id=7664c5372c2b48f3817e60e4a7d98a3c`，初始状态 `queued`，响应明确提示数据库尚未修改。
+在 Swagger 中新建测试笔记，请求返回 **202 Accepted** 和任务 ID，表示操作已入队。
 
 ![RabbitMQ 写请求返回 HTTP 202 和任务 ID](assets/jotang-async-202.png)
 
-继续通过已认证的 `GET /tasks/{task_id}` 查询，真实响应为 HTTP **200**、`status=completed`、`result.id=6`、`message=创建成功`；这是实际消息已由 Worker 处理并执行数据库写入后的业务结果。
+随后查询任务状态，返回 `completed` 和新笔记 ID，确认 Worker 已完成写入。
 
 ![查询 RabbitMQ 任务完成状态](assets/jotang-async-completed.png)
 
-随后通过 Swagger 异步 DELETE 删除笔记 ID 6，并通过同一测试账号删除此前网页建立的笔记 ID 5；两者后续真实 GET 均返回 **404**，Redis 对应笔记缓存键均不存在。
+再提交异步删除；任务完成后查询笔记返回 404，对应的 Redis 缓存键已清除。
 
 ![Swagger 异步 DELETE 接口提交结果](assets/jotang-async-delete.png)
 
-Swagger 截图中隐藏了含 Authorization 的 Curl 命令区；真实任务已由 Worker 完成。崩溃恢复、严格幂等和消息乱序未做生产级保证。
+截图未显示登录 Token。严格幂等和故障恢复等加分内容尚未实现。
 
 ## 技术与边界
 
@@ -92,4 +89,4 @@ Swagger 截图中隐藏了含 Authorization 的 Curl 命令区；真实任务已
 - `basic_qos(prefetch_count=1)` 和单个 Worker 将未确认消息限制为一条，降低乱序风险；`auto_ack=False` 与执行后 `basic_ack` 让消息在处理前不会自动删除。
 - Redis 的 `jotang:task:<id>` 仅保存进度与结果，TTL 为一天，不是永久任务历史；原有 `jotang:note:<id>` 保存的是笔记查询缓存，两者分开。
 - **可靠性限制：** 当前是招新教学实现，并不保证严格的 exactly-once：Worker 在 MySQL commit 后、保存完成状态/ACK 前崩溃时 RabbitMQ 可能重投递，尤其是 create 有重复创建风险；若 MySQL 已成功而 Redis 状态更新失败，也可能让状态滞留在 processing。当前代码会记录日志并避免因完成状态写入失败而主动再次执行数据库写入。生产设计需增加 MySQL 任务表/唯一任务 ID、事务内幂等检查、持久化结果与故障恢复。题面将顺序性与幂等性强化列为加分项，这里暂不声称已完成。
-- 本项目 `.env.example` 和当前实际 `.env` 均配置 `NOTE_WRITE_MODE=async` 以符合招新要求；代码在没有设置开关时回退为同步模式，便于早期无 Broker 的 CRUD 学习。切换是系统整体开关，非请求参数。
+- `NOTE_WRITE_MODE=async` 启用 RabbitMQ 写入；未设置时默认同步写数据库。该开关在服务端配置，不由客户端指定。

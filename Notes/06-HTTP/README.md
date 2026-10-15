@@ -124,8 +124,6 @@ def hello():
 
 `@app.get("/hello")` 只注册 GET 方法；若调用 `POST /hello` 而没有对应路由，通常得到 405。
 
-## 6. 本阶段理解与实践情况
+## 6. 在项目中的应用
 
-已经在此前的 FastAPI 环境练习中启动 Uvicorn，并通过浏览器访问 `/hello`。本阶段通过问答理解了请求/响应结构、方法语义、常见状态码和幂等性，能区分不存在资源的 404 与方法不允许的 405，知道长篇笔记应通过 POST 请求体提交。
-
-本文中 JotangNote 的 `/notes` 系列路径为接口设计示例，尚未在项目中实现。
+FastAPI 提供 `GET /hello`。笔记操作分别使用 `GET`、`POST`、`PUT`、`DELETE`，登录使用 `POST /login`，具体路由见 [app.py](../../Project/src/app.py)。上面的部分 HTTP 报文是格式示例，并非抓包结果。

@@ -1,6 +1,6 @@
 # JotangNote
 
-焦糖工作室 2026 后端方向招新项目。我用 Python + FastAPI 实现笔记管理，接入 MySQL、Redis、RabbitMQ，并扩展了 AI 对话和笔记查询。开发环境为 Ubuntu 虚拟机，使用 VS Code / PyCharm。
+焦糖工作室 2026 后端招新项目。使用 Python、FastAPI、MySQL、Redis 和 RabbitMQ 实现笔记管理，并接入 AI 聊天和笔记查询功能。
 
 ## 项目功能
 
@@ -22,7 +22,7 @@
 
 ## 运行方法
 
-项目在 Ubuntu 22.04 的独立 Python 3.13 虚拟环境中运行。先准备 MySQL 数据库 `jotang_note`、`users` 和 `notes` 表（可参考 [建表 SQL](Project/sql/schema.sql)），以及 Redis、RabbitMQ 服务。建表脚本按当前代码需要的字段整理，**不是现有数据库的结构导出**。参考 [`.env.example`](.env.example) 配置本机的 `.env`；密钥和密码不写入仓库。
+项目使用 Ubuntu 22.04 和 Python 3.13。启动前需准备 MySQL、Redis、RabbitMQ，数据库名为 `jotang_note`，建表参考 [schema.sql](Project/sql/schema.sql)。按 [`.env.example`](.env.example) 配置本机 `.env`，不要把密码和密钥提交到仓库。
 
 ~~~bash
 cd ~/jotang-recruit/JotangNote
@@ -52,8 +52,4 @@ export DB_PASSWORD
 
 项目自动化测试 **46/46 通过**。操作截图见：[启蒙篇](Notes/01-Environment/README.md)、[认证与 CRUD](Project/docs/authentication.md)、[Redis](Project/docs/redis-cache.md)、[RabbitMQ](Project/docs/rabbitmq-async.md)、[AI 聊天与前端](Project/docs/ai-agent.md)。
 
-缓存穿透/击穿的增强方案、严格消息幂等、聊天持久化、全文搜索和 Docker 部署等属于加分方向，本项目没有额外实现。
-
-## 学习记录
-
-从启蒙篇的概念和最小练习开始，逐步把数据库、缓存、异步写入和 AI 对话组合到一个项目中。过程中使用了 AI 辅助答疑、部分代码实现、排错和文档整理。对我来说需要重点理解的是：请求进入路由后怎样访问数据库、事务什么时候提交、异步请求和任务完成有什么区别，以及模型发起 Tool Call 后实际由谁执行查询。
+未实现的加分项包括缓存穿透/击穿优化、严格消息幂等、聊天持久化、全文搜索和 Docker 部署。

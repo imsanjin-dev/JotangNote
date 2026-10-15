@@ -93,8 +93,6 @@ FastAPI 通常会将可序列化的返回值编码为 JSON 响应。对请求中
 - JSON 的 `false` 对应 Python 的 `False`，而不能直接把 JSON 语法当成 Python 语法；
 - 日期时间和自定义对象等不一定能直接由标准库 `json.dumps()` 处理，可能需要先转换成 JSON 支持的类型。
 
-## 5. 本阶段理解与实践情况
+## 5. 在项目中的应用
 
-已能判断 JSON 对象对应 Python `dict`，JSON 数组对应 `list`，并能正确解释 `json.loads()` 解析嵌套对象和数组后的类型。理解使用 `json.dumps()` 和 `json.loads()` 在 Python 对象与 JSON 字符串间转换。
-
-本节是概念与示例学习，没有在项目中单独执行新的 JSON 测试；后续实际开发 API 时继续应用。
+FastAPI 使用 JSON 接收和返回数据；RabbitMQ 的任务消息也采用 JSON 格式，相关代码见 [app.py](../../Project/src/app.py) 和 [note_queue.py](../../Project/src/note_queue.py)。

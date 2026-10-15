@@ -10,12 +10,7 @@
 
 本次开发主要在 Ubuntu 虚拟机中完成，使用 PyCharm Remote Development / SSH 连接虚拟机进行开发。
 
-当前环境：
-
-- Python 3.10.12
-- 项目级虚拟环境：`.venv`
-- Web 框架：FastAPI
-- ASGI Server：Uvicorn
+项目开始时使用 Python 3.10，后续改为独立的 Python 3.13 虚拟环境 `.venv`。Web 框架使用 FastAPI，服务由 Uvicorn 启动。
 
 项目中的 Python 环境使用独立的 `.venv`，可以把当前项目需要的依赖和系统 Python 环境分开，避免不同项目之间的依赖相互影响。
 
@@ -60,13 +55,13 @@ Hello World From Web Application!
 运行 Uvicorn 时使用：
 
 ```bash
-uvicorn app:app --host 0.0.0.0 --port 8080
+.venv/bin/uvicorn app:app --app-dir Project/src --host 0.0.0.0 --port 8080
 ```
 
 其中：
 
 - `uvicorn`：启动 Uvicorn 服务。
-- `app:app`：表示加载 `app.py` 文件中的 `app` FastAPI 对象。
+- `app:app`：加载 `app.py` 中的 FastAPI 对象；`--app-dir Project/src` 指定源码目录。
 - `--host 0.0.0.0`：允许从虚拟机外部访问该服务。
 - `--port 8080`：让服务监听 8080 端口。
 

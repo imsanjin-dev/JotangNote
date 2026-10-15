@@ -14,7 +14,7 @@
 
 ## 环境准备
 
-项目 Python 虚拟环境已安装 `redis==7.4.1`（Python 客户端），**这不等于安装 Redis 服务端**。Ubuntu 若尚无 Redis 服务，请用户亲自执行以下需要 sudo 的命令：
+Python 的 `redis` 依赖是客户端库；Ubuntu 还需运行 Redis 服务端。安装方式：
 
 ```bash
 sudo apt update
@@ -49,21 +49,21 @@ redis-cli ping
 4. 删除自己的笔记（DELETE）成功后，缓存键应不存在；再次 GET 应为 404。
 5. Redis 停止或不可达时，GET 应继续从 MySQL 返回结果；恢复 Redis 后可以重新生成缓存。
 
-**测试记录：** 自动化测试覆盖缓存未命中回源、命中后不再查数据库、300 秒 TTL、更新/删除后的失效、404 不缓存和 Redis 故障降级。实际服务联调中，MySQL 查询返回的笔记能写入 Redis，再次请求能从缓存读取；2026-10-15 又验证了真实异步 PUT/DELETE 完成后缓存键被清除。
+自动化测试覆盖缓存命中、MySQL 回源、过期时间、缓存失效及 Redis 不可用时的回退。真实联调也验证了读取缓存、异步修改后的缓存失效，以及删除笔记后返回 404。
 
-## 10 月 15 日的网页操作截图
+## 缓存测试截图（2026-10-15）
 
-在已启动的真实 API、MySQL、Redis 及异步 Worker 上，以无隐私测试笔记 ID 5 复测：
+以测试笔记 ID 5 检查 Redis 缓存：
 
-- 浏览器真实 GET 返回 200 后，用 Ubuntu `redis-cli TTL jotang:note:5` 检查，TTL 为 **290 秒**、`EXISTS` 为 **1**（配置 TTL 300 秒；读取/传输已消耗少量时间）。
-- 在网页通过异步 PUT 修改同一笔记并收到「修改成功」后，`redis-cli EXISTS jotang:note:5` 为 **0**、TTL 为 **-2**，说明 Worker 完成数据库提交后旧缓存被删除。
-- 后续异步 DELETE 测试笔记 ID 5/6 后，真实 GET 均返回 404，对应 Redis 键 `EXISTS` 均为 **0**。
+- 首次 GET 后，`redis-cli TTL jotang:note:5` 返回 290 秒，`EXISTS` 为 1（缓存配置 TTL 300 秒）。
+- 异步 PUT 完成后，`EXISTS jotang:note:5` 为 0，TTL 为 -2，旧缓存已删除。
+- 删除测试笔记 ID 5、6 后，再次 GET 返回 404，缓存键均不存在。
 
 ![查询笔记并验证 Redis 缓存时的网页](assets/jotang-note-read.png)
 
 ![更新完成后的网页操作反馈](assets/jotang-note-update.png)
 
-截图记录了笔记查询和修改结果；Redis 的 TTL、EXISTS 值为同一次测试中在 Ubuntu 终端检查得到的结果。
+截图为网页操作结果；TTL 和 EXISTS 数值由 Redis 命令行检查。
 
 ## 官方思考题
 
@@ -71,4 +71,4 @@ redis-cli ping
 - **缓存穿透：** 对不存在的 ID，可增加短 TTL 的空值缓存（例如 20 秒）或布隆过滤器。当前保留简单实现，未启用空值缓存。
 - **缓存击穿：** 热门键过期时可引入互斥锁、提前刷新或不同过期时间；当前未实现，不能假定已解决。
 
-后续 RabbitMQ 异步写入引入后，需要重新审视缓存删除的时机：应在数据库实际更新提交成功时，而不是请求刚入队时。
+异步写入时，应由 Worker 在数据库提交成功后删除缓存，而不是在请求入队时删除。

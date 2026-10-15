@@ -14,22 +14,22 @@
 - JWT 是**签名令牌**，而不是加密文本，载荷中只保存用户 ID（`sub`）和过期时间（`exp`），不包含密码。
 - 服务器用 `JWT_SECRET_KEY` 验证签名，无需每次重新输入密码；过期后重新登录。
 - `HTTPBearer` 负责读取请求头，`Depends` 复用认证逻辑。
-- 采用 **HS256** 和 **120 分钟**有效期，是本项目选择，不是招新题指定的技术。
-- 旧的 `notes.author` 字符串列保留，不做表迁移。旧笔记的作者字符串需与现有用户名一致，才能由该账号修改或删除。用户身份不能由客户端直接传入的 `author` 决定。
-- 这里不包含主动立即注销、刷新令牌或跨设备会话管理；如以后需要，可加入 Redis 管理会话/撤销令牌。
+- Token 使用 HS256 签名，有效期为 120 分钟。
+- `notes.author` 保存作者用户名；修改、删除时与当前登录用户的用户名比较，不能相信客户端自行填写的作者身份。
+- 当前没有实现刷新 Token 或主动撤销 Token。
 
 ## 环境和启动
 
-项目使用 Python 3.13 的独立虚拟环境 .venv，Ubuntu 系统 Python 3.10 保持不变。旧的项目环境备份为 .venv-py310-backup，不提交 Git。进入项目根目录后，使用：
+项目使用 Python 3.13 虚拟环境。在仓库根目录安装依赖：
 
 ```bash
 .venv/bin/python --version  # 应为 3.13.x
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-项目根目录 `.env` 已在本地生成独立随机 `JWT_SECRET_KEY`，`gitignore` 会忽略它。其他机器部署时需要各自生成新的密钥（例如 `openssl rand -hex 32`），不要提交到 Git。源码通过 `python-dotenv` 读取 `.env`。
+在项目根目录的 `.env` 配置 `JWT_SECRET_KEY`。可通过 `openssl rand -hex 32` 生成随机密钥；`.env` 已被 Git 忽略，不应上传。
 
-MySQL 密码仍需通过环境变量提供，不写入仓库：
+在启动服务的终端输入数据库密码：
 
 ```bash
 read -rsp "DB_PASSWORD: " DB_PASSWORD
@@ -49,9 +49,9 @@ export DB_PASSWORD
 5. 用原作者的 Token 修改/删除，应该成功。
 6. 不带 Token 或携带过期 Token 的写请求应返回 401。
 
-## 2026-10-15 真实浏览器登录与笔记操作截图
+## 网页操作截图（2026-10-15）
 
-使用 Windows Edge 浏览 Ubuntu FastAPI 网页，专门注册非个人账号 `recruit_demo_20261015`，经真实 `POST /register` / `POST /login` 登录成功；网页显示登录账号、启用新增/修改/删除按钮。随后以该账号创建无隐私笔记 ID 5，经异步 Worker 完成并由 `GET /notes/5` 回读，返回标题、正文、作者和时间。修改后也通过网页显示「修改成功」；截图中未展示密码、JWT 或个人数据。
+通过网页注册并登录测试账号，创建笔记后根据 ID 查询、修改和删除。写操作经 RabbitMQ Worker 异步完成；截图记录了登录、创建、查询和修改的结果。
 
 ![测试账号已登录工作台](assets/jotang-logged-in.png)
 
@@ -61,9 +61,9 @@ export DB_PASSWORD
 
 ![网页提交异步修改成功](assets/jotang-note-update.png)
 
-测试后删除了笔记 ID 5 和 6，再次查询均返回 404。测试账号仍留在 `users` 表，便于后续复测。
+测试笔记已删除，之后再次查询返回 404。
 
-## 测试与证据边界
+## 测试
 
 自动化测试在 `Project/tests/test_auth.py`，可用：
 
@@ -71,4 +71,4 @@ export DB_PASSWORD
 .venv/bin/python -m unittest discover -s Project/tests -v
 ```
 
-`test_auth.py` 的 8 项自动化测试验证登录成功/失败、JWT 校验、作者权限等逻辑，其中数据库使用模拟对象。2026-10-15 又在真实网页完成注册登录、笔记新增/查询/修改/删除，截图已附在上面。跨用户修改/删除的 403 由自动化测试覆盖，本次没有单独做第二个真人账户的网页截图。
+`test_auth.py` 包含 8 项测试，覆盖登录、JWT 校验和作者权限，其中数据库使用模拟对象；网页 CRUD 另使用真实数据库验证。跨账号修改/删除返回 403 由自动化测试覆盖。

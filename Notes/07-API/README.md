@@ -33,7 +33,7 @@ Accept: application/json
   "content": "学习String和Hash",
   "author": {
     "id": 12,
-    "name": "golds"
+    "name": "demo_user"
   },
   "created_at": "2026-10-10T10:00:00Z",
   "updated_at": "2026-10-10T11:00:00Z",
@@ -94,8 +94,6 @@ def get_note(note_id: int):
 
 `note_id: int` 表示期望的路径参数类型。实际实现还要补充数据库访问、用户认证、笔记权限检查及响应数据校验。
 
-## 6. 本阶段理解与实践情况
+## 6. 在项目中的应用
 
-通过设计讨论，已能为查询笔记选择 GET、为删除笔记选择 DELETE、为仅修改标题选择 PATCH；能够提出笔记详情应返回标题、正文、作者、时间和媒体等信息，并理解评论分页及私人笔记的权限校验。
-
-**本阶段是 API 设计学习，没有把以上 `/notes` 系列接口实现到 JotangNote 中。** 后续入门篇再编写真正的 CRUD 接口。
+上面的笔记详情、评论等内容用于说明 API 设计，不表示项目已经实现图片、点赞或评论功能。实际接口包括笔记 CRUD、注册登录和聊天，定义见 [app.py](../../Project/src/app.py)。

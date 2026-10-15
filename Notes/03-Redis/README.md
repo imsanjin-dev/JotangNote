@@ -107,10 +107,8 @@ client.close()
 
 这里的 `client` 是 Redis 客户端，`set/get` 操作 String，`hset/hget` 操作 Hash；`ex=60` 对应设置 60 秒 TTL。`decode_responses=True` 让文本结果按字符串解码，否则通常会得到 `bytes`。实际项目中还需配置认证、连接超时和异常处理。
 
-**上述代码仅作为 Python API 的学习示例，尚未连接 Redis 服务实测。** 实际安装和运行留到入门篇。
+上述代码用来演示 Redis Python 客户端的基本操作，和 JotangNote 的正式缓存代码不是同一份。
 
-## 7. 本阶段掌握情况
+## 7. 在项目中的应用
 
-已能解释 Redis 缓存为何能减少重复的 MySQL 查询，理解 String 与 Hash 的区别，以及 TTL、惰性删除、定期主动删除、逻辑过期和物理删除。能解释缓存更新失败为何导致旧数据，以及缓存到期后按需回源 MySQL 的流程。
-
-**目前属于概念学习和命令示例，并未在虚拟机中实际安装、连接或运行 Redis 命令。** 后续 JotangNote 入门篇实践时再验证。
+JotangNote 查询笔记时先查 Redis，未命中再访问 MySQL；修改或删除成功后清除对应缓存。具体代码见 [note_cache.py](../../Project/src/note_cache.py)，操作与测试记录见 [Redis 缓存说明](../../Project/docs/redis-cache.md)。

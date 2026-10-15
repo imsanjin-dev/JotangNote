@@ -123,10 +123,6 @@ ch.basic_ack(delivery_tag=method.delivery_tag)
 
 RabbitMQ 并不自动保证业务只执行一次。可靠处理还依赖应用自身的设计。
 
-## 6. 本阶段理解与实践情况
+## 6. 练习与项目实现
 
-已理解 RabbitMQ 异步处理、削峰和解耦的作用，以及生产者、交换机、队列、消费者、ACK、重复投递和幂等性的基本关系。
-
-已在 Ubuntu 虚拟机中使用 Docker 启动 RabbitMQ，并通过 Python Pika 编写 `send.py`、`receive.py` 进行最小收发练习。发送入队经过独立检查；消费运行由实际操作反馈确认，当时没有额外核验消费后的队列计数和完整 ACK 日志。
-
-目前能理解示例代码的用途和整体流程，但脱离示例独立组织代码、AMQP 的底层细节、故障重投和持久化等可靠性场景仍有待通过实践掌握。后续在 JotangNote 入门篇的真实异步任务中继续学习，不单独重复收发示例。
+先用 Pika 编写 [send.py](../../Project/src/send.py) 和 [receive.py](../../Project/src/receive.py) 练习消息收发，之后将 RabbitMQ 接入 JotangNote 的笔记写入流程。正式项目由 [note_queue.py](../../Project/src/note_queue.py) 发布任务，[note_worker.py](../../Project/src/note_worker.py) 消费执行，详见 [RabbitMQ 异步操作](../../Project/docs/rabbitmq-async.md)。

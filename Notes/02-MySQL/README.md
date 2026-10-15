@@ -6,7 +6,7 @@ MySQL 是一种关系型数据库管理系统，使用表（Table）组织数据
 
 对于 JotangNote，未来需要保存用户信息和笔记信息。例如：
 
-| note_id | title | content |
+| id | title | content |
 | --- | --- | --- |
 | 1 | Python 入门 | 学习变量与函数 |
 | 2 | MySQL 基础 | 学习数据库索引 |
@@ -38,7 +38,7 @@ InnoDB 常见索引使用 B+ 树结构，可缩小要查找的数据范围；在
 Python 可以使用 PyMySQL 等数据库驱动连接 MySQL，创建游标（cursor）来执行 SQL，再读取查询结果。例如：
 
 ```sql
-SELECT * FROM notes WHERE note_id = 2;
+SELECT * FROM notes WHERE id = 2;
 ```
 
 其中 `SELECT` 表示查询，`*` 表示返回全部列，`FROM notes` 指定表，`WHERE` 指定筛选条件。
@@ -48,7 +48,7 @@ SELECT * FROM notes WHERE note_id = 2;
 ```python
 with connection.cursor() as cursor:
     cursor.execute(
-        "SELECT * FROM notes WHERE note_id = %s",
+        "SELECT * FROM notes WHERE id = %s",
         (note_id,)
     )
     result = cursor.fetchone()
@@ -59,13 +59,11 @@ with connection.cursor() as cursor:
 如果直接拼接用户输入 `1 OR 1=1`，可能产生：
 
 ```sql
-SELECT * FROM notes WHERE note_id = 1 OR 1=1;
+SELECT * FROM notes WHERE id = 1 OR 1=1;
 ```
 
 由于 `1=1` 为真，可能意外查询出所有行，这就是 SQL 注入风险。实际接口还应对笔记 ID 做类型验证、检查访问权限。
 
-## 5. 本阶段理解与实践状态
+## 5. 在项目中的应用
 
-通过问答，已能独立写出按 ID 查询的 `SELECT` 语句，理解索引能减少搜索范围、索引需要额外空间，并指出字符串拼接造成 SQL 注入的具体例子。针对“只有 Key-Value Hash 才快”的想法，补充学习了 B+ 树的精确与范围查询特点。
-
-**当前仅完成概念学习与笔记整理**；尚未在本阶段实际安装、连接或测试 MySQL。后续入门篇再通过 JotangNote 笔记增删改查验证实际使用。
+上面的 SQL 和 PyMySQL 代码是学习示例。JotangNote 实际通过 `notes.id` 查询笔记，使用参数化 SQL 完成增删改查；用户数据存放在 `users` 表中。实现见 [app.py](../../Project/src/app.py)，建表参考见 [schema.sql](../../Project/sql/schema.sql)。
