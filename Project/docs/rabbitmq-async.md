@@ -72,6 +72,22 @@ export DB_PASSWORD
 - **真实异步 DELETE 已验收：** 2026-10-14 后续用户用 Swagger 发起笔记 ID 4 的 DELETE，验收记录确认任务 completed、Worker 返回删除成功、GET /notes/4 返回 404，Redis 缓存已经失效。本次复查 GET /notes/4 仍为 HTTP 404。
 - **安全限制：** 不能以签发测试用 JWT 取代对真实登录的验收；也不应从环境中导出账号密码或 Token。
 
+## 2026-10-15 真实异步任务及截图
+
+在 `NOTE_WRITE_MODE=async`、RabbitMQ、Redis、MySQL、Worker 均运行时，通过 Swagger 的真实 `POST /notes` 新建无隐私测试笔记，请求返回 HTTP **202 Accepted**，`task_id=7664c5372c2b48f3817e60e4a7d98a3c`，初始状态 `queued`，响应明确提示数据库尚未修改。
+
+![RabbitMQ 写请求返回 HTTP 202 和任务 ID](assets/jotang-async-202.png)
+
+继续通过已认证的 `GET /tasks/{task_id}` 查询，真实响应为 HTTP **200**、`status=completed`、`result.id=6`、`message=创建成功`；这是实际消息已由 Worker 处理并执行数据库写入后的业务结果。
+
+![查询 RabbitMQ 任务完成状态](assets/jotang-async-completed.png)
+
+随后通过 Swagger 异步 DELETE 删除笔记 ID 6，并通过同一测试账号删除此前网页建立的笔记 ID 5；两者后续真实 GET 均返回 **404**，Redis 对应笔记缓存键均不存在。
+
+![Swagger 异步 DELETE 接口提交结果](assets/jotang-async-delete.png)
+
+为避免泄露浏览器会话 Token，Swagger 截图拍摄时隐藏了包含 Authorization 请求头的 Curl 示例区域；截图未包含口令、JWT 或私有笔记。**以上证据证明业务链路真实通过，不等于测试了 RabbitMQ 崩溃恢复、严格一次执行或跨用户授权的全部生产边界。**
+
 ## 技术与边界
 
 - `queue_declare(..., durable=True)` 使队列元数据重启后保留；`delivery_mode=2` 请求消息持久化；`confirm_delivery()` + `mandatory=True` 检查 Broker 是否确认接收消息。

@@ -51,6 +51,20 @@ redis-cli ping
 
 **验收状态（2026-10-14）：** 原有 JWT 权限模拟测试 8/8 + 缓存模拟测试 8/8 全部通过。用户安装 Redis 服务端后，SSH 独立验证 Redis 6.0.16 的 `PONG`、仅本机监听 6379，以及 TestClient 连接**真实 Redis 服务端**的 13/13 项检查：缓存未命中→模拟 MySQL 回源→写入真实 Redis、300 秒 TTL、日期 JSON、缓存命中跳过 MySQL、PUT/DELETE 数据库模拟提交后删除真实缓存、404 不缓存。另使用真实 Redis Python 客户端连接不可达端口，验证 GET 可以回退模拟 MySQL。临时 Redis 键已删除，未修改用户实际笔记。**该组 HTTP 流程的 MySQL 部分使用模拟连接；真实数据库授权写操作（PUT/DELETE）联合验收仍待完成。** 随后用户亲自启动含 DB_PASSWORD 的 FastAPI 服务，SSH 从真实 HTTP 接口完成 **9/9 项 MySQL + Redis 读链路检查**：`GET /notes/1` 真实返回 200、对应真实 Redis 缓存 JSON 与 HTTP 响应一致、TTL 在 300 秒范围内、第二次 GET 不重置 TTL；请求未缓存的不存在 ID 返回 404，且不生成空值缓存（实际查询由真实 MySQL 执行）。整个真实联调未改动既有笔记数据。
 
+## 2026-10-15 真实网页与 Redis 验收截图
+
+在已启动的真实 API、MySQL、Redis 及异步 Worker 上，以无隐私测试笔记 ID 5 复测：
+
+- 浏览器真实 GET 返回 200 后，用 Ubuntu `redis-cli TTL jotang:note:5` 检查，TTL 为 **290 秒**、`EXISTS` 为 **1**（配置 TTL 300 秒；读取/传输已消耗少量时间）。
+- 在网页通过异步 PUT 修改同一笔记并收到「修改成功」后，`redis-cli EXISTS jotang:note:5` 为 **0**、TTL 为 **-2**，说明 Worker 完成数据库提交后旧缓存被删除。
+- 后续异步 DELETE 测试笔记 ID 5/6 后，真实 GET 均返回 404，对应 Redis 键 `EXISTS` 均为 **0**。
+
+![查询笔记并验证 Redis 缓存时的网页](assets/jotang-note-read.png)
+
+![更新完成后的网页操作反馈](assets/jotang-note-update.png)
+
+这些是浏览器真实操作截图和同期 Redis CLI 结果记录；**图片本身没有展示 Redis 命令行窗口**。命中不重置 TTL 的完整验证仍以此前联调及自动化测试为依据。
+
 ## 官方思考题
 
 - **缓存一致性：** 当前在 MySQL commit 后删除 Redis 缓存，同时设置 300 秒 TTL 作为兜底。Redis 删除失败、并发 GET 与 PUT 交错仍可能短暂返回旧值；当前实现是最终一致，不是严格一致。

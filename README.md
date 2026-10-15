@@ -78,6 +78,12 @@ export DB_PASSWORD
 
 入门篇 / 进阶篇仍需真实操作的流程截图和网站提交。请先根据 [招新交付检查](Project/docs/recruitment-acceptance.md) 整理证据；另提供 [无密码回显的真实 HTTP 验收脚本](Project/scripts/live_acceptance.py)，默认只创建并清理自己的临时测试笔记，支持同步/异步写入流程。脚本本身已通过语法检查，**尚未执行带真实账号和 MySQL 的全链路回归**，不可代替人工截图与最终网站提交。
 
+## 2026-10-15 真实浏览器验收与正式截图
+
+本轮已通过 Windows Edge 访问真实 Ubuntu FastAPI，并完成无隐私测试账号的注册/登录、笔记异步 CRUD、Redis 命中/失效、RabbitMQ 202 → completed、DeepSeek 多轮聊天及真实 MySQL 笔记 Tool Use。删除测试笔记 ID 5/6 后，GET 均返回 404；截图分散在 [登录与权限](Project/docs/authentication.md)、[Redis](Project/docs/redis-cache.md)、[RabbitMQ](Project/docs/rabbitmq-async.md) 和 [AI Agent](Project/docs/ai-agent.md)。网页重复的「新建笔记」按钮已修复，46/46 测试仍通过。
+
+**仅剩招新网站入门篇/进阶篇正式提交，提交前请按 [交付检查](Project/docs/recruitment-acceptance.md) 核对。** 临时测试账号 `recruit_demo_20261015` 尚未从数据库删除（笔记已清理）。
+
 ## 验收状态
 
 - 基础笔记 CRUD：用户此前通过 Swagger 实际验收。

@@ -1,22 +1,26 @@
-# 2026 焦糖后端招新交付检查（2026-10-14）
+# 2026 焦糖后端招新交付检查（更新于 2026-10-15）
 
 对照招新网站原文的后端启蒙篇、入门篇、进阶篇进行检查。本表区分代码实现、实测、文档截图和最终网站提交，不能代替评审结论。
 
 ## 各阶段对照
 
-| 阶段/任务 | 已有内容 | 剩余问题 |
+| 阶段/任务 | 当前证据 | 仍需注意 |
 | --- | --- | --- |
-| 启蒙：Hello World、FastAPI | Notes/01-Environment，有真实终端和浏览器截图 | 已具备必需基本证据 |
-| 启蒙：MySQL、Redis、RabbitMQ、AI Agent、HTTP/API/JSON/HTTPS 基础 | Notes/02 至 Notes/09 均有 Markdown 学习笔记 | 评审时仍须能够用自己的话解释 |
-| 入门 Part 1：笔记 CRUD、MySQL、注册登录、作者权限 | app.py、authentication.md、test_auth.py；既有用户实测与模拟测试 | 功能流程截图缺失 |
-| 入门 Part 2：Redis 缓存 | note_cache.py、redis-cache.md、test_cache.py；真实缓存联调 | 缓存命中/失效截图缺失 |
-| 入门 Part 3：RabbitMQ 异步新增、修改、删除 | note_queue.py、note_worker.py、rabbitmq-async.md、test_async.py；真实任务验收 | 202 入队、任务 completed、Worker 执行结果截图缺失；启动须使用 NOTE_WRITE_MODE=async |
-| 进阶 Part 1：AI /chat | ai_client.py；真实 YosHub DeepSeek 调用成功 | 已登录聊天流程截图缺失 |
-| 进阶 Part 2：会话历史 | chat_session.py；真实模型多轮追问验证 | 操作流程截图缺失 |
-| 进阶 Part 3：笔记 ID 工具调用、工具消息进入上下文 | ai_client.py、ai-agent.md、test_chat_advanced.py；真实模型 + 合成笔记回调通过 | 用真实数据库的无敏感测试笔记演示并截图更有说服力 |
-| 进阶 Part 4：Agent 编写前端 | Project/web/index.html 和未登录网页真实截图 | 用户确认网页可用，但仍缺已登录笔记和 AI 聊天操作截图 |
+| 启蒙：Hello World、FastAPI | Notes/01-Environment 两张真实截图 | 启蒙篇已在招新网站提交 |
+| 启蒙：MySQL、Redis、RabbitMQ、AI Agent、HTTP/API/JSON/HTTPS | Notes/02–09 学习笔记 | 评审时需用自己的话解释 |
+| 入门 Part 1：CRUD、注册登录、作者权限 | authentication.md；网页真实账号登录、笔记新增/读取/修改/删除截图；JWT 权限测试 | 跨用户 403 为自动化验证，未另拍真实跨账号浏览器图 |
+| 入门 Part 2：Redis 缓存 | redis-cache.md；实际 GET 后 TTL 290 秒，PUT/DELETE 后缓存失效；相关网页图 | Redis CLI 结果为记录，未另拍终端图 |
+| 入门 Part 3：RabbitMQ 异步新增/修改/删除 | rabbitmq-async.md；真实 202、任务 completed、删除及 404；Swagger 截图 | Worker 控制台未另拍，状态和数据库结果已验收 |
+| 进阶 Part 1：/chat | ai-agent.md；真实 DeepSeek 已登录网页对话图 | 第三方额度、服务可用性不保证长期稳定 |
+| 进阶 Part 2：会话历史 | ai-agent.md；真实多轮追问图和测试 | 当前为内存会话，持久化属于 Bonus |
+| 进阶 Part 3：笔记 ID Tool Use | ai-agent.md；真实 MySQL 无隐私测试笔记 ID 5 问答图 | 不把模型文本单独当工具调用审计 |
+| 进阶 Part 4：Agent 前端 | Project/web/index.html；真实登录/笔记/AI 聊天截图 | 开发者需要能说明网页与接口的关联 |
 
-总计自动化测试 46/46 通过，仓库 GitHub public。截图当前仅有两张启蒙篇 Hello World 和一张未登录前端。官方明确要求入门、进阶各功能文档附使用流程必要截图、核心逻辑与个人说明、测试过程与结果；因此不能宣布交付材料全部合格。
+**2026-10-15 本轮新验收：** Windows Edge → FastAPI（Ubuntu）→ MySQL/Redis/RabbitMQ Worker/DeepSeek；网页注册登录和笔记 CRUD、真实 AI 多轮及笔记查询，Swagger 异步 HTTP 202 → task completed，并拍摄浏览器操作图。新建的测试笔记 ID 5/6 已删除，GET 均为 404；仅留下无隐私测试账号 `recruit_demo_20261015` 等待日后清理。发现网页 `createBtn` 重复且有一处不完整标签，已做一行最小修复，原有自动化 **46/46** 再次通过。
+
+关键截图统一放在 `Project/docs/assets/jotang-*.png`，按主题分别嵌入 `authentication.md`、`redis-cache.md`、`rabbitmq-async.md`、`ai-agent.md`。截图是真实界面，不含明文密码、JWT、密钥和私人笔记。Swagger 的 Curl 命令区因可能包含 Authorization 而在截图时隐藏。
+
+**当前只剩招新网站的入门篇和进阶篇正式提交，及提交前阅读核对文档与截图。** 若评审特别要求跨账号 403 或 Worker 控制台画面，可另补；不能把本地 GitHub Push 等同网站提交，也不能宣称已获平台审核通过。
 
 ## 真实 HTTP 回归检查（2026-10-15 新增辅助脚本）
 
@@ -34,13 +38,12 @@
 - 它不会测试跨账户 403、真实 AI 上游调用或截图本身，以上仍需通过 Swagger / 网页单独留证；不能把脚本语法检查说成真实联调已通过。
 - 截图和日志中的密码、Bearer Token、私有密钥、个人笔记正文必须打码或完全避开，优先使用临时测试笔记。
 
-## 截图与最终提交清单
+## 网站提交前最后核对
 
-1. 注册/登录、笔记 CRUD 及跨账号禁止修改/删除，隐藏口令和 JWT。
-2. Redis 首次加载与缓存命中，成功修改/删除后的缓存失效。
-3. RabbitMQ 接口 HTTP 202、任务 status=completed 与 Worker 结果。
-4. 网页已登录画面、普通聊天、多轮对话、按 ID 读取无隐私测试笔记的 AI 最终回复。
-5. 将截图分别嵌入 authentication.md、redis-cache.md、rabbitmq-async.md、ai-agent.md；修正任何与实测冲突的描述。确保自己能解释 AI 辅助完成的核心逻辑。
+1. 确认入门篇文档 `authentication.md`、`redis-cache.md`、`rabbitmq-async.md` 中图片可正常显示。
+2. 确认进阶篇文档 `ai-agent.md` 的真实 DeepSeek、多轮和 Tool Use 图片可正常显示。
+3. 向焦糖招新网站分别提交入门篇、进阶篇所需 GitHub 仓库链接或平台要求内容；必要时按评审要求补证。
+4. 不上传 .env、JWT、API Key、数据库密码或截图中的私密数据。
 
 截至此次核对，LifeOS 记录基础入门五个模块于 10 月 6 日提交；后端启蒙篇 10 月 10 日已在网站提交，尚无评审结果。**没有后端入门篇及进阶篇在招新网站提交完成的明确记录**。GitHub 推送不能替代该动作。
 

@@ -1,6 +1,6 @@
 # 进阶篇 Part 2–4：会话管理、Tool Use 与网页
 
-> 2026-10-14。代码和 46 项自动化测试通过；YosHub DeepSeek 真实 API、Tool Use、多轮追问及 FastAPI 路由已验证。截图为早先未登录的实际网页加载，不代表浏览器已完成完整真实账户联调。
+> 截至 2026-10-15：46 项自动化测试通过；除 10 月 14 日真实 YosHub DeepSeek 接口联调外，现已完成浏览器真实账号登录、实际 MySQL 笔记读取、多轮聊天及 AI Tool Use，并留下截图。文中 10 月 14 日的「尚未真实网页登录」属于当时历史验收边界，已被以下实测补齐。
 
 ## 使用流程
 
@@ -23,6 +23,18 @@ POST /chat + JWT
 ![JotangNote 前端工作台实际加载](assets/frontend-workspace.png)
 
 这是用 Windows Edge 浏览虚拟机 FastAPI 网站生成的 1440×900 截图，展示的是未登录首页。它仅证明前端可以加载，不证明真实账户、数据库写入或第三方 AI 对话已联通。
+
+## 2026-10-15 真实已登录网页与 DeepSeek 截图
+
+在 Windows Edge 真实访问 Ubuntu JotangNote：用单独注册的无隐私演示账号登录后，先做两轮问答，第二轮要求「把你刚才的回答改写成两条简短要点」，DeepSeek 返回与上一轮相呼应的两点；随后明确请求模型通过 `get_note_by_id` 读取**真实 MySQL 测试笔记 ID 5**，模型准确列出笔记原文包含的 MySQL、Redis、RabbitMQ 和 AI 按 ID 查询四项技术。这比 10 月 14 日只向合成回调读取模拟笔记更接近实际用户操作。
+
+![真实用户登录后的工作台](assets/jotang-logged-in.png)
+
+![DeepSeek 普通聊天与多轮追问](assets/jotang-chat-multiturn.png)
+
+![DeepSeek 根据真实笔记 ID 读取内容并作答](assets/jotang-ai-tool-use.png)
+
+测试笔记 ID 5 在截图保存后已由原账号删除，`GET /notes/5` 返回 404；截图中的用户与笔记均为专门创建的测试数据。**截图展示用户问答及真实笔记结果；服务端 Tool Call 的消息与工具结果保存逻辑仍以代码、此前独立 SDK 联调及自动化测试共同佐证**，不把最终模型文本单独当成后台函数调用的完整审计证明。
 
 ## 接口示例
 

@@ -49,6 +49,20 @@ export DB_PASSWORD
 5. 用原作者的 Token 修改/删除，应该成功。
 6. 不带 Token 或携带过期 Token 的写请求应返回 401。
 
+## 2026-10-15 真实浏览器登录与笔记操作截图
+
+使用 Windows Edge 浏览 Ubuntu FastAPI 网页，专门注册非个人账号 `recruit_demo_20261015`，经真实 `POST /register` / `POST /login` 登录成功；网页显示登录账号、启用新增/修改/删除按钮。随后以该账号创建无隐私笔记 ID 5，经异步 Worker 完成并由 `GET /notes/5` 回读，返回标题、正文、作者和时间。修改后也通过网页显示「修改成功」；截图中未展示密码、JWT 或个人数据。
+
+![测试账号已登录工作台](assets/jotang-logged-in.png)
+
+![网页新增笔记成功](assets/jotang-note-create.png)
+
+![网页读取真实 MySQL 笔记](assets/jotang-note-read.png)
+
+![网页提交异步修改成功](assets/jotang-note-update.png)
+
+测试结束后 ID 5、6 均执行删除且再次 GET 为 404。跨账号修改/删除返回 403 仍以既有自动化测试为证据，**本轮没有声称取得跨账号的真实浏览器截图**。测试账号本身尚留在测试用 `users` 表，后续可由数据库管理员清理。
+
 ## 测试与证据边界
 
 自动化测试在 `Project/tests/test_auth.py`，可用：
