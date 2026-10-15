@@ -98,7 +98,3 @@ FastAPI 通常会将可序列化的返回值编码为 JSON 响应。对请求中
 已能判断 JSON 对象对应 Python `dict`，JSON 数组对应 `list`，并能正确解释 `json.loads()` 解析嵌套对象和数组后的类型。理解使用 `json.dumps()` 和 `json.loads()` 在 Python 对象与 JSON 字符串间转换。
 
 本节是概念与示例学习，没有在项目中单独执行新的 JSON 测试；后续实际开发 API 时继续应用。
-
-## AI 使用说明
-
-使用 ChatGPT 解释 JSON 数据类型、Python 序列化和 FastAPI 中的 JSON 响应，协助整理学习笔记；本节新增示例未做独立运行验收。

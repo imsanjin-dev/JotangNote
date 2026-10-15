@@ -1,95 +1,59 @@
 # JotangNote
 
-2026 焦糖工作室后端方向招新项目，主要使用 **Python + FastAPI**，开发和学习环境为 Ubuntu 虚拟机及 PyCharm Remote Development。
+焦糖工作室 2026 后端方向招新项目。我用 Python + FastAPI 实现笔记管理，接入 MySQL、Redis、RabbitMQ，并扩展了 AI 对话和笔记查询。开发环境为 Ubuntu 虚拟机，使用 VS Code / PyCharm。
 
-## 当前进度
+## 项目功能
 
-- **启蒙篇 Part 1：** 已完成终端 Hello World、FastAPI `GET /hello`，保存运行截图。
-- **启蒙篇 Part 2：** 已完成 MySQL、Redis、RabbitMQ、AI Agent 的基础知识学习与笔记；RabbitMQ 另外完成 Docker + Pika 最小消息收发练习。
-- **启蒙篇 Part 3：** 已整理 HTTP、API、JSON、HTTPS 笔记。
-- **入门篇：** 笔记 CRUD、注册/登录已实现；JWT 和作者权限通过 8 项自动化模拟测试。Redis 查询缓存代码已实现，新增模拟测试 8 项及真实 MySQL + Redis 查询链路 9 项均通过；用户授权 PUT/DELETE 与异步写入的主要数据库联调此前已通过。RabbitMQ 笔记异步接口与 Worker 已实现（仓库的配置示例启用异步模式，代码未设置开关时仍有同步回退）；RabbitMQ 服务端已安装，真实异步新增、修改、删除均已完成 MQ + MySQL + Redis 联调。
-- **进阶篇：** 已实现多轮会话、笔记查询 Tool Use 和前端工作台；46/46 项自动化测试通过。已使用 YosHub OpenAI 兼容接口并选择 DeepSeek，真实模型 ID 和 API Key 均已在 Ubuntu 本机验证，普通聊天、真实 Tool Use 与多轮追问均通过；密钥未提交至 Git。
+| 阶段 | 内容 | 代码与文档 |
+| --- | --- | --- |
+| 启蒙篇 | Hello World、FastAPI；MySQL、Redis、RabbitMQ、AI Agent、HTTP、API、JSON、HTTPS 学习笔记 | [Notes](Notes/README.md) |
+| 入门篇 Part 1 | 笔记 CRUD、用户注册登录、JWT 与作者权限 | [认证和笔记操作](Project/docs/authentication.md) |
+| 入门篇 Part 2 | 按 ID 查询时优先读 Redis，未命中再查 MySQL；修改/删除后清除缓存 | [Redis 缓存](Project/docs/redis-cache.md) |
+| 入门篇 Part 3 | RabbitMQ 异步处理笔记新增、修改、删除，并查询任务状态 | [RabbitMQ 异步任务](Project/docs/rabbitmq-async.md) |
+| 进阶篇 Part 1–4 | `/chat`、多轮会话、查询笔记的 Tool Calling、网页工作台 | [AI 和前端](Project/docs/ai-agent.md) |
 
 ## 项目结构
 
-- [Notes/](Notes/README.md)：启蒙篇学习笔记、截图和练习记录。
-- [Project/src/](Project/src/)：已编写的 Python 源码，包括 Hello World、FastAPI 和 RabbitMQ 示例。
-- [Project/docs/](Project/docs/)：JWT、Redis、RabbitMQ、AI 接口与进阶 Agent 的说明、测试步骤和网页截图。
-- [Project/tests/](Project/tests/)：API 自动化测试。
-- [requirements.txt](requirements.txt)：项目依赖；[.python-version](.python-version) 为 Python 版本提示。
+- [Notes](Notes/README.md)：启蒙篇笔记、Hello World 截图和 RabbitMQ 练习
+- [Project/src](Project/src)：FastAPI、MySQL、Redis、消息队列、AI 调用和会话管理
+- [Project/web](Project/web)：单文件网页
+- [Project/docs](Project/docs)：功能说明、关键逻辑和操作截图
+- [Project/tests](Project/tests)：自动化测试
 
-## 启蒙篇笔记
+## 运行方法
 
-1. [开发环境与运行截图](Notes/01-Environment/README.md)
-2. [MySQL](Notes/02-MySQL/README.md)
-3. [Redis](Notes/03-Redis/README.md)
-4. [RabbitMQ](Notes/04-RabbitMQ/README.md)
-5. [AI Agent](Notes/05-AI-Agent/README.md)
-6. [HTTP 请求与响应](Notes/06-HTTP/README.md)
-7. [API 接口设计](Notes/07-API/README.md)
-8. [JSON](Notes/08-JSON/README.md)
-9. [HTTPS](Notes/09-HTTPS/README.md)
+项目在 Ubuntu 22.04 的独立 Python 3.13 虚拟环境中运行。先准备 MySQL 数据库 `jotang_note`、`users` 和 `notes` 表（可参考 [建表 SQL](Project/sql/schema.sql)），以及 Redis、RabbitMQ 服务。建表脚本按当前代码需要的字段整理，**不是现有数据库的结构导出**。参考 [`.env.example`](.env.example) 配置本机的 `.env`；密钥和密码不写入仓库。
 
-## Python 3.13 开发环境
-
-Ubuntu 22.04 的系统 Python 仍是 3.10，请不要更改 /usr/bin/python3。JotangNote 已改用独立的 Python 3.13.16 虚拟环境。
-
-```bash
+~~~bash
 cd ~/jotang-recruit/JotangNote
-.venv/bin/python --version
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m unittest discover -s Project/tests -v
-```
+~~~
 
-旧的 Python 3.10 虚拟环境保留在 .venv-py310-backup，已被 Git 忽略。Python 3.13 由 uv 管理。
+启动异步模式需设置 `NOTE_WRITE_MODE=async`，并先运行 Worker：
 
-启动 API 前需要 JWT_SECRET_KEY（项目根目录 .env，参考 .env.example）；新机器可以用 openssl rand -hex 32 生成新密钥。数据库密码应通过环境变量提供，不要提交真实密码或密钥。
-
-```bash
-read -rsp "DB_PASSWORD: " DB_PASSWORD
-echo
+~~~bash
+read -rsp "DB_PASSWORD: " DB_PASSWORD; echo
 export DB_PASSWORD
-.venv/bin/uvicorn app:app --app-dir Project/src --host 0.0.0.0 --port 8080 --reload
-```
+.venv/bin/python Project/src/note_worker.py
+~~~
 
-通过 http://<虚拟机 IP>:8080/docs 打开 Swagger，登录获取 access_token 后使用 Authorize 按钮授权。细节见 [JWT 认证与作者权限](Project/docs/authentication.md)。
+在另一个终端同样导出 `DB_PASSWORD`，然后启动 API：
 
-## Redis 缓存
+~~~bash
+.venv/bin/uvicorn app:app --app-dir Project/src --host 0.0.0.0 --port 8080
+~~~
 
-入门篇 Part 2 已接入 Redis 查询缓存；缓存键、TTL、缓存失效与安装联调见 [Redis 缓存实践](Project/docs/redis-cache.md)。Python 客户端与 Redis 服务端均已安装并通过连通性检查；首次在新 Ubuntu 环境部署时仍需按说明安装服务端。
+浏览器访问 `http://虚拟机IP:8080/` 使用工作台，`/docs` 打开 Swagger。异步写入返回 HTTP 202 表示任务已入队，最终是否完成要通过 `GET /tasks/{task_id}` 查询。AI 聊天需要在 `.env` 中自行设置 `AI_BASE_URL`、`AI_MODEL` 和 `AI_API_KEY`。
 
-## RabbitMQ 异步操作
+## 测试结果
 
-招新入门篇 Part 3 使用 `NOTE_WRITE_MODE=async`，需运行 RabbitMQ 与 `note_worker.py`；写接口返回 202 已入队，调用 `GET /tasks/{task_id}` 查询最终执行结果。当前私有配置和公开示例均启用异步模式；代码没有开关时回退同步模式。见 [RabbitMQ 异步笔记操作](Project/docs/rabbitmq-async.md)。真实新增、修改、删除及后续数据库/缓存验证均已有记录。
+2026-10-15 在真实 Ubuntu 服务上用单独的测试账号完成了注册登录、笔记创建/查询/修改/删除、Redis 缓存读写和失效、RabbitMQ 任务状态查询，以及 DeepSeek 多轮聊天和 Tool Calling 查询真实测试笔记。测试笔记已经删除。
 
-## AI 会话、Tool Use 与网页（进阶篇 Part 1–4）
+项目自动化测试 **46/46 通过**。操作截图见：[启蒙篇](Notes/01-Environment/README.md)、[认证与 CRUD](Project/docs/authentication.md)、[Redis](Project/docs/redis-cache.md)、[RabbitMQ](Project/docs/rabbitmq-async.md)、[AI 聊天与前端](Project/docs/ai-agent.md)。
 
-已经实现需要登录的 `POST /chat`、多轮会话和笔记 Tool Use；上游服务使用项目根目录 `.env` 的 `AI_BASE_URL`、`AI_MODEL`、`AI_API_KEY` 配置。现使用 YosHub OpenAI Chat Completions 兼容接口调用 DeepSeek（模型 ID：deepseek-v4.1-flash），真实上游调用及 Tool Use 已通过；详情见 [AI Agent / YosHub 配置和测试](Project/docs/ai-agent.md)。密钥仅在本机私有 .env 中。
+缓存穿透/击穿的增强方案、严格消息幂等、聊天持久化、全文搜索和 Docker 部署等属于加分方向，本项目没有额外实现。
 
-## 网页快速使用
+## 学习记录
 
-按照上面的命令启动 Uvicorn 后，打开 http://虚拟机IP:8080/ 使用笔记管理与 AI 聊天工作台；也可继续打开 /docs 使用 Swagger。网页无需 Node 或前端构建环境。登录前需在终端设置 DB_PASSWORD；聊天另需在 .env 中自行设置 AI_API_KEY（不要上传密钥）。
-
-网页截图和关键流程见 [进阶篇说明](Project/docs/ai-agent.md)。服务端会话仅在内存保留 30 分钟、最近 10 轮，重启不会保留。在 AI_API_KEY 缺失时聊天返回 503，而非生成虚假结果。
-
-官方题面逐项对照及剩余截图/正式网站提交事项见 [招新交付检查](Project/docs/recruitment-acceptance.md)。
-
-## 正式截图与真实接口回归
-
-入门篇 / 进阶篇仍需真实操作的流程截图和网站提交。请先根据 [招新交付检查](Project/docs/recruitment-acceptance.md) 整理证据；另提供 [无密码回显的真实 HTTP 验收脚本](Project/scripts/live_acceptance.py)，默认只创建并清理自己的临时测试笔记，支持同步/异步写入流程。脚本本身已通过语法检查，**尚未执行带真实账号和 MySQL 的全链路回归**，不可代替人工截图与最终网站提交。
-
-## 2026-10-15 真实浏览器验收与正式截图
-
-本轮已通过 Windows Edge 访问真实 Ubuntu FastAPI，并完成无隐私测试账号的注册/登录、笔记异步 CRUD、Redis 命中/失效、RabbitMQ 202 → completed、DeepSeek 多轮聊天及真实 MySQL 笔记 Tool Use。删除测试笔记 ID 5/6 后，GET 均返回 404；截图分散在 [登录与权限](Project/docs/authentication.md)、[Redis](Project/docs/redis-cache.md)、[RabbitMQ](Project/docs/rabbitmq-async.md) 和 [AI Agent](Project/docs/ai-agent.md)。网页重复的「新建笔记」按钮已修复，46/46 测试仍通过。
-
-**仅剩招新网站入门篇/进阶篇正式提交，提交前请按 [交付检查](Project/docs/recruitment-acceptance.md) 核对。** 临时测试账号 `recruit_demo_20261015` 尚未从数据库删除（笔记已清理）。
-
-## 验收状态
-
-- 基础笔记 CRUD：用户此前通过 Swagger 实际验收。
-- 注册：用户此前确认实际测试可用。
-- 登录 JWT、Token 校验与作者权限：自动化模拟测试 8/8 通过；本轮没有重新进行真实 MySQL 身份认证测试。
-- Redis 缓存：8 项模拟测试通过；Redis 6.0.16 真实服务的 13 项检查全部通过（MySQL 部分模拟）；随后 9 项真实 FastAPI + MySQL + Redis **查询链路**检查全部通过。授权 PUT/DELETE 后续已由 RabbitMQ 异步路径完成真实联调。
-- RabbitMQ 真实异步 POST、PUT、DELETE → Worker → MySQL + Redis 已完成主要功能验收。AI 进阶 Part 1–4 代码已实现，自动化 46/46 通过；2026-10-14 使用 YosHub DeepSeek 实测 Chat Completions、Tool Use、历史追问、FastAPI /chat 路由及跨用户会话隔离。实时网页使用真实账户登录、真实 MySQL 笔记查询与完整浏览器操作尚未在本轮重新端到端验收。
-
-启蒙篇运行截图保存在 [环境笔记](Notes/01-Environment/README.md) 中。
+从启蒙篇的概念和最小练习开始，逐步把数据库、缓存、异步写入和 AI 对话组合到一个项目中。过程中使用了 AI 辅助答疑、部分代码实现、排错和文档整理。对我来说需要重点理解的是：请求进入路由后怎样访问数据库、事务什么时候提交、异步请求和任务完成有什么区别，以及模型发起 Tool Call 后实际由谁执行查询。

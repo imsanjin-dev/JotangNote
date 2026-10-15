@@ -63,16 +63,14 @@ export DB_PASSWORD
 5. 临时停 Worker，仅投递到 RabbitMQ，确认任务保持 queued；重启 Worker 后完成。再测试 RabbitMQ 不可用时新写请求应返回 503 而不是假成功。
 6. 将测试笔记清理干净，留存必要的 Swagger/队列/结果截图及真实 HTTP 结果，再交付 Git。
 
-## 2026-10-14 实际验收进度
+## 测试过程
 
-- **真实异步新增已通过：** Swagger 请求得到 `202` 和任务 ID，Redis 状态为 `completed`，Worker 的 MySQL INSERT 返回新笔记 ID `4`；真实 HTTP GET 返回 `200`，Redis 笔记缓存与响应一致。
-- **真实异步修改已通过：** PUT 任务 ID `8abf52caf40f4eeebe355952f68477c6` 最终状态为 `completed`，Worker 返回“修改成功”；下一次 GET 前旧缓存键已经不存在（TTL -2），GET 返回新标题、正文，再次写入缓存（TTL 300），缓存与响应一致。
-- **真实 RabbitMQ 已通过：** 服务运行正常，项目业务账号连接真实 broker 的消息发布、收取、ACK 检查通过；主队列单 Worker 订阅，观察时消费者 1、待处理消息 0。
-- **异常/权限逻辑：** 29 项本地自动化测试通过（其中 13 项 RabbitMQ 模拟与失败分支），覆盖任务状态 401/403/404/503、消息无法投递、后台错误记录、手动 ACK，以及 Redis 在数据库提交后不可用等情形；这些是模拟测试，不代表真实生产故障已经发生。
-- **真实异步 DELETE 已验收：** 2026-10-14 后续用户用 Swagger 发起笔记 ID 4 的 DELETE，验收记录确认任务 completed、Worker 返回删除成功、GET /notes/4 返回 404，Redis 缓存已经失效。本次复查 GET /notes/4 仍为 HTTP 404。
-- **安全限制：** 不能以签发测试用 JWT 取代对真实登录的验收；也不应从环境中导出账号密码或 Token。
+- 先启动 RabbitMQ、Redis、MySQL、Worker 和 FastAPI，设置 `NOTE_WRITE_MODE=async`。
+- 在 Swagger 登录并提交笔记新增请求，返回 202 和任务 ID；通过任务状态接口查到 `completed`，再 GET 笔记确认已写入 MySQL。
+- 异步修改笔记后，新的内容可查询且对应旧 Redis 缓存被删除；异步删除笔记后，再次查询返回 404。
+- `test_async.py` 覆盖任务查询权限、消息发布失败、Worker 错误、ACK 等分支。当前并未实现严格的重复消息幂等保证，这部分属于加分项。
 
-## 2026-10-15 真实异步任务及截图
+## HTTP 202 与任务完成截图
 
 在 `NOTE_WRITE_MODE=async`、RabbitMQ、Redis、MySQL、Worker 均运行时，通过 Swagger 的真实 `POST /notes` 新建无隐私测试笔记，请求返回 HTTP **202 Accepted**，`task_id=7664c5372c2b48f3817e60e4a7d98a3c`，初始状态 `queued`，响应明确提示数据库尚未修改。
 
@@ -86,7 +84,7 @@ export DB_PASSWORD
 
 ![Swagger 异步 DELETE 接口提交结果](assets/jotang-async-delete.png)
 
-为避免泄露浏览器会话 Token，Swagger 截图拍摄时隐藏了包含 Authorization 请求头的 Curl 示例区域；截图未包含口令、JWT 或私有笔记。**以上证据证明业务链路真实通过，不等于测试了 RabbitMQ 崩溃恢复、严格一次执行或跨用户授权的全部生产边界。**
+Swagger 截图中隐藏了含 Authorization 的 Curl 命令区；真实任务已由 Worker 完成。崩溃恢复、严格幂等和消息乱序未做生产级保证。
 
 ## 技术与边界
 

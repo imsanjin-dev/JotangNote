@@ -38,7 +38,7 @@ export DB_PASSWORD
 .venv/bin/uvicorn app:app --app-dir Project/src --host 0.0.0.0 --port 8080 --reload
 ```
 
-## Swagger 实际验收清单
+## Swagger 复测步骤
 
 打开 `http://<Ubuntu虚拟机IP>:8080/docs`：
 
@@ -61,7 +61,7 @@ export DB_PASSWORD
 
 ![网页提交异步修改成功](assets/jotang-note-update.png)
 
-测试结束后 ID 5、6 均执行删除且再次 GET 为 404。跨账号修改/删除返回 403 仍以既有自动化测试为证据，**本轮没有声称取得跨账号的真实浏览器截图**。测试账号本身尚留在测试用 `users` 表，后续可由数据库管理员清理。
+测试后删除了笔记 ID 5 和 6，再次查询均返回 404。测试账号仍留在 `users` 表，便于后续复测。
 
 ## 测试与证据边界
 
@@ -71,4 +71,4 @@ export DB_PASSWORD
 .venv/bin/python -m unittest discover -s Project/tests -v
 ```
 
-2026-10-14 在 Python 3.13 中使用 FastAPI TestClient 和模拟数据库运行 8 个测试，通过；测试环境使用 httpx2，不再出现旧版 httpx 弃用警告。这只能证明接口认证逻辑，并非真实 MySQL 的 HTTP 端到端测试。Swagger 的实际联调与流程截图尚待补充；成功以后应把截图、运行步骤与测试结果归档到项目文档中，不预先伪造截图或验收状态。
+`test_auth.py` 的 8 项自动化测试验证登录成功/失败、JWT 校验、作者权限等逻辑，其中数据库使用模拟对象。2026-10-15 又在真实网页完成注册登录、笔记新增/查询/修改/删除，截图已附在上面。跨用户修改/删除的 403 由自动化测试覆盖，本次没有单独做第二个真人账户的网页截图。

@@ -33,7 +33,7 @@ redis-cli ping
 
 随后按项目 [README](../../README.md) 中的步骤提供 `DB_PASSWORD` 并启动 Uvicorn（JWT_SECRET_KEY 已从 `.env` 读取）。
 
-## 真实联调建议
+## 复测方法
 
 1. 用已存在的笔记 ID 请求一次 `GET /notes/{id}`；再请求一次，应命中 Redis。
 2. 在 Ubuntu 终端检查缓存：
@@ -49,9 +49,9 @@ redis-cli ping
 4. 删除自己的笔记（DELETE）成功后，缓存键应不存在；再次 GET 应为 404。
 5. Redis 停止或不可达时，GET 应继续从 MySQL 返回结果；恢复 Redis 后可以重新生成缓存。
 
-**验收状态（2026-10-14）：** 原有 JWT 权限模拟测试 8/8 + 缓存模拟测试 8/8 全部通过。用户安装 Redis 服务端后，SSH 独立验证 Redis 6.0.16 的 `PONG`、仅本机监听 6379，以及 TestClient 连接**真实 Redis 服务端**的 13/13 项检查：缓存未命中→模拟 MySQL 回源→写入真实 Redis、300 秒 TTL、日期 JSON、缓存命中跳过 MySQL、PUT/DELETE 数据库模拟提交后删除真实缓存、404 不缓存。另使用真实 Redis Python 客户端连接不可达端口，验证 GET 可以回退模拟 MySQL。临时 Redis 键已删除，未修改用户实际笔记。**该组 HTTP 流程的 MySQL 部分使用模拟连接；真实数据库授权写操作（PUT/DELETE）联合验收仍待完成。** 随后用户亲自启动含 DB_PASSWORD 的 FastAPI 服务，SSH 从真实 HTTP 接口完成 **9/9 项 MySQL + Redis 读链路检查**：`GET /notes/1` 真实返回 200、对应真实 Redis 缓存 JSON 与 HTTP 响应一致、TTL 在 300 秒范围内、第二次 GET 不重置 TTL；请求未缓存的不存在 ID 返回 404，且不生成空值缓存（实际查询由真实 MySQL 执行）。整个真实联调未改动既有笔记数据。
+**测试记录：** 自动化测试覆盖缓存未命中回源、命中后不再查数据库、300 秒 TTL、更新/删除后的失效、404 不缓存和 Redis 故障降级。实际服务联调中，MySQL 查询返回的笔记能写入 Redis，再次请求能从缓存读取；2026-10-15 又验证了真实异步 PUT/DELETE 完成后缓存键被清除。
 
-## 2026-10-15 真实网页与 Redis 验收截图
+## 10 月 15 日的网页操作截图
 
 在已启动的真实 API、MySQL、Redis 及异步 Worker 上，以无隐私测试笔记 ID 5 复测：
 
@@ -63,7 +63,7 @@ redis-cli ping
 
 ![更新完成后的网页操作反馈](assets/jotang-note-update.png)
 
-这些是浏览器真实操作截图和同期 Redis CLI 结果记录；**图片本身没有展示 Redis 命令行窗口**。命中不重置 TTL 的完整验证仍以此前联调及自动化测试为依据。
+截图记录了笔记查询和修改结果；Redis 的 TTL、EXISTS 值为同一次测试中在 Ubuntu 终端检查得到的结果。
 
 ## 官方思考题
 

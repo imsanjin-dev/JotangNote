@@ -11,3 +11,7 @@
 - [07 API](07-API/README.md)：接口设计、分页、权限检查
 - [08 JSON](08-JSON/README.md)：数据类型、Python 序列化和反序列化
 - [09 HTTPS](09-HTTPS/README.md)：TLS、密钥交换、证书与加密
+
+## 阅读说明
+
+这些是启蒙篇当时的学习笔记，其中一些示例在记录时还没有实测。后续 MySQL、Redis、RabbitMQ 和 AI 功能的实际实现与截图，请查看 [Project/docs](../Project/docs/)。
